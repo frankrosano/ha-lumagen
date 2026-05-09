@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ha-lumagen-specific
+.venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+uv.lock
+
+# Agent-tool scratch files
+.commit-msg.tmp

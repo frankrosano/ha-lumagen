@@ -1,0 +1,115 @@
+{
+  "title": "Lumagen Radiance Pro",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Lumagen serial port",
+        "description": "Pick the serial port for your Lumagen. ESPHome serial-proxy ports appear in this list automatically once the ESPHome device is adopted. You can also paste a serialx URL manually (e.g. `esphome://host:6053/?port_name=Lumagen&key=...`).",
+        "data": {
+          "url": "Serial port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not open the serial port. Check the device is reachable.",
+      "no_response": "Opened the port, but the Lumagen did not respond. Is it on the other end of this port?",
+      "no_ports": "No serial ports were detected. Adopt an ESPHome device with a serial_proxy component, or plug in a USB-to-serial adapter.",
+      "unknown": "Unexpected error. Check the logs for details."
+    },
+    "abort": {
+      "already_configured": "This Lumagen is already configured."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "power": { "name": "Power" },
+      "is_hdr": { "name": "HDR active" }
+    },
+    "sensor": {
+      "model": { "name": "Model" },
+      "firmware": { "name": "Firmware" },
+      "current_input": { "name": "Current input" },
+      "input_memory": { "name": "Input memory" },
+      "source_resolution": { "name": "Source resolution" },
+      "source_vrate": { "name": "Source refresh rate" },
+      "source_aspect": { "name": "Source aspect" },
+      "content_aspect": { "name": "Content aspect" },
+      "output_resolution": { "name": "Output resolution" },
+      "output_vrate": { "name": "Output refresh rate" },
+      "colorspace": {
+        "name": "Colorspace",
+        "state": {
+          "Rec.601": "Rec.601",
+          "Rec.709": "Rec.709",
+          "Rec.2020": "Rec.2020",
+          "Rec.2100": "Rec.2100"
+        }
+      },
+      "hdr_status": {
+        "name": "HDR status",
+        "state": { "SDR": "SDR", "HDR": "HDR" }
+      },
+      "input_status": {
+        "name": "Input status",
+        "state": {
+          "No Source": "No source",
+          "Active": "Active",
+          "Test Pattern": "Test pattern"
+        }
+      },
+      "source_mode": {
+        "name": "Source mode",
+        "state": {
+          "i": "Interlaced",
+          "p": "Progressive",
+          "-": "No input"
+        }
+      }
+    },
+    "button": {
+      "power_on": { "name": "Power on" },
+      "standby": { "name": "Standby" },
+      "menu": { "name": "Menu" },
+      "exit": { "name": "Exit" },
+      "ok": { "name": "OK" },
+      "menu_off": { "name": "Menu off" },
+      "up": { "name": "Up" },
+      "down": { "name": "Down" },
+      "left": { "name": "Left" },
+      "right": { "name": "Right" },
+      "input_1": { "name": "Input 1" },
+      "input_2": { "name": "Input 2" },
+      "input_3": { "name": "Input 3" },
+      "input_4": { "name": "Input 4" },
+      "input_5": { "name": "Input 5" },
+      "input_6": { "name": "Input 6" },
+      "input_7": { "name": "Input 7" },
+      "input_8": { "name": "Input 8" },
+      "previous_input": { "name": "Previous input" },
+      "aspect_4_3": { "name": "Aspect 4:3" },
+      "aspect_letterbox": { "name": "Aspect letterbox" },
+      "aspect_16_9": { "name": "Aspect 16:9" },
+      "aspect_16_9_nz": { "name": "Aspect 16:9 NZ" },
+      "aspect_1_85": { "name": "Aspect 1.85" },
+      "aspect_2_35": { "name": "Aspect 2.35" },
+      "aspect_2_40": { "name": "Aspect 2.40" },
+      "auto_aspect_on": { "name": "Auto aspect on" },
+      "auto_aspect_off": { "name": "Auto aspect off" },
+      "memory_a": { "name": "Memory A" },
+      "memory_b": { "name": "Memory B" },
+      "memory_c": { "name": "Memory C" },
+      "memory_d": { "name": "Memory D" },
+      "hdr_setup": { "name": "HDR setup" },
+      "test_pattern": { "name": "Test pattern" },
+      "osd_on": { "name": "OSD on" },
+      "osd_off": { "name": "OSD off" },
+      "save": { "name": "Save to NVRAM" },
+      "query_status": { "name": "Query status" }
+    },
+    "select": {
+      "input_select": { "name": "Input" },
+      "aspect_select": { "name": "Aspect ratio" },
+      "memory_select": { "name": "Memory" }
+    }
+  }
+}

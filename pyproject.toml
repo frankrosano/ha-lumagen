@@ -1,0 +1,50 @@
+[project]
+name = "ha-lumagen"
+version = "0.1.0"
+description = "Home Assistant custom integration for Lumagen Radiance Pro (development metadata; the deployable artifact is custom_components/lumagen/)."
+requires-python = ">=3.14"
+
+[dependency-groups]
+dev = [
+    # pytest-homeassistant-custom-component pins an HA core version that
+    # tracks the current HA release; uv resolves the rest (pytest, voluptuous,
+    # homeassistant itself) transitively.
+    "pytest-homeassistant-custom-component>=0.13",
+    # HA's `usb` integration imports aiousbwatcher; it's an extra on the
+    # homeassistant package, so pull it in explicitly for the test env.
+    "aiousbwatcher",
+    # We import from pylumagen in the integration code, so it must be
+    # resolvable from the test env.
+    "pylumagen",
+    "ruff>=0.7",
+    "mypy>=1.11",
+]
+
+[tool.uv.sources]
+# During development, point at the sibling pylumagen repo by path.
+pylumagen = { path = "../pylumagen", editable = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",     # pycodestyle, pyflakes
+    "I",               # isort
+    "UP",              # pyupgrade
+    "B",               # flake8-bugbear
+    "C4",              # flake8-comprehensions
+    "SIM",             # flake8-simplify
+    "RUF",             # ruff-specific
+]
+
+[tool.mypy]
+python_version = "3.14"
+strict = false  # HA's own stubs aren't strict-clean; keep false for v0.1
+warn_unreachable = true
