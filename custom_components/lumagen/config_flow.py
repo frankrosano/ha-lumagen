@@ -21,7 +21,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.components import usb
-from homeassistant.components.usb import USBDevice
+from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.selector import (
     SelectOptionDict,
@@ -62,7 +62,7 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
             errors["base"] = error_code
 
         ports = await usb.async_scan_serial_ports(self.hass)
-        options = [_option_for_port(p) for p in ports if isinstance(p, USBDevice)]
+        options = [_option_for_port(p) for p in ports]
         if not options:
             errors.setdefault("base", "no_ports")
 
@@ -98,8 +98,13 @@ def _default_title(url: str) -> str:
     return f"Lumagen ({url})"
 
 
-def _option_for_port(port: USBDevice) -> SelectOptionDict:
-    """Build a dropdown entry from a scanned serial port."""
+def _option_for_port(port: USBDevice | SerialDevice) -> SelectOptionDict:
+    """Build a dropdown entry from a scanned serial port.
+
+    ``USBDevice`` (physical ports) has ``vid``/``pid``; ``SerialDevice``
+    (ESPHome serial_proxy URLs and other virtual ports) does not. Use
+    ``getattr`` so both work through the same formatter.
+    """
     label = usb.human_readable_device_name(
         port.device,
         port.serial_number,

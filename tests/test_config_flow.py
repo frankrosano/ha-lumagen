@@ -11,7 +11,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant import config_entries
-from homeassistant.components.usb import USBDevice
+from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pylumagen import LumagenConnectionError, LumagenState
@@ -62,6 +62,30 @@ async def test_form_shows_dropdown(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
     assert result["errors"] in (None, {})
+
+
+async def test_dropdown_includes_esphome_serial_proxy_ports(hass: HomeAssistant) -> None:
+    """SerialDevice entries (e.g. ESPHome serial_proxy URLs) must appear.
+
+    Regression for the day-one bug where ``isinstance(p, USBDevice)``
+    filtered out every ESPHome-proxied port because those come back as
+    plain ``SerialDevice``, not ``USBDevice``. The dropdown must accept
+    both shapes.
+    """
+    esphome_proxy = SerialDevice(
+        device="esphome://10.0.0.42:6053/?port_name=Lumagen&key=abc",
+        serial_number=None,
+        manufacturer="ESPHome",
+        description="Lumagen",
+    )
+    with _patch_scan([esphome_proxy]):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] in (None, {})
+    schema_options = result["data_schema"].schema[CONF_URL].config["options"]
+    assert any(opt["value"] == esphome_proxy.device for opt in schema_options)
 
 
 async def test_happy_path_creates_entry(hass: HomeAssistant) -> None:
