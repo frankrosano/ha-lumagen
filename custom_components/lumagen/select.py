@@ -37,6 +37,22 @@ _ASPECT_COMMANDS: dict[str, str] = {
 }
 
 
+# Best-effort mapping from the Lumagen's `!I24` content_aspect value
+# (a zero-padded integer representing aspect * 100, e.g. 178, 235) to
+# the closest preset label in the dropdown. The Lumagen does not
+# report which preset is actually active — only the detected content
+# aspect — so when the user selects a preset that doesn't match the
+# source (e.g. 4:3 on 16:9 content) the display will be wrong until
+# they pick another preset. That's a protocol limitation, not a bug.
+_CONTENT_ASPECT_TO_LABEL: tuple[tuple[int, str], ...] = (
+    (133, "4:3"),       # 1.33
+    (178, "16:9"),      # 1.78
+    (185, "1.85"),      # 1.85
+    (235, "2.35"),      # 2.35
+    (240, "2.40"),      # 2.40
+)
+
+
 async def _select_input(client: LumagenClient, value: str) -> None:
     await client.set_input(int(value))
 
@@ -65,10 +81,12 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
         key="aspect_select",
         translation_key="aspect_select",
         options=list(_ASPECT_COMMANDS),
-        # The Lumagen doesn't tell us what aspect is currently selected —
-        # only the source/content aspect ratios. We report the content
-        # aspect's closest label as a best-effort match.
-        current_fn=lambda s: None,
+        # The Lumagen doesn't report which aspect *preset* is selected,
+        # only the detected content aspect. Map the content aspect to the
+        # nearest preset label as a best-effort display. Will be wrong
+        # when the user intentionally picks a mismatched preset (e.g. 4:3
+        # on 16:9 content) until they pick another preset.
+        current_fn=lambda s: _closest_aspect_label(s.content_aspect),
         select_fn=_select_aspect,
     ),
     LumagenSelectDescription(
@@ -89,6 +107,26 @@ def _strip_zeros(raw: str | None) -> str | None:
         return str(int(raw))
     except (TypeError, ValueError):
         return raw
+
+
+def _closest_aspect_label(raw: str | None) -> str | None:
+    """Return the dropdown label whose target is closest to ``raw``.
+
+    ``raw`` is the Lumagen's `!I24` ``SSS`` field — a zero-padded integer
+    representing ``aspect * 100`` (e.g. ``178`` for 16:9). We snap to the
+    nearest entry in ``_CONTENT_ASPECT_TO_LABEL``; if ``raw`` can't be
+    parsed we return ``None`` so the UI shows no selection.
+    """
+    if raw is None:
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return min(
+        _CONTENT_ASPECT_TO_LABEL,
+        key=lambda entry: abs(entry[0] - value),
+    )[1]
 
 
 async def async_setup_entry(

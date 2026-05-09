@@ -105,7 +105,9 @@ async def test_happy_path_creates_entry(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == {CONF_URL: FAKE_URL}
-    assert "RadiancePro" in result["title"]
+    # Title is "Lumagen <model>" — firmware must NOT appear here because
+    # it changes over OTA updates; it lives in DeviceInfo.sw_version instead.
+    assert result["title"] == "Lumagen RadiancePro"
 
 
 async def test_cannot_connect_surfaces_error(hass: HomeAssistant) -> None:

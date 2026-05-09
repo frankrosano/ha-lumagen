@@ -146,9 +146,7 @@ async def _validate_url(url: str) -> tuple[str | None, str | None]:
             return "no_response", None
 
         state = client.state
-        title = f"Lumagen {state.model}"
-        if state.firmware:
-            title += f" ({state.firmware})"
-        return None, title
+        model = state.model or "Radiance Pro"
+        return None, f"Lumagen {model}"
     finally:
         await client.stop()
