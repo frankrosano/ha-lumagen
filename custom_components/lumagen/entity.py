@@ -16,6 +16,13 @@ class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
     serialx URL — see :mod:`.config_flow`). Model and firmware are filled
     in as soon as the Lumagen reports them via ``!S01``; until then they
     show as ``None`` in the device registry, which HA handles gracefully.
+
+    ``configuration_url`` is intentionally not set. The URL we'd have to
+    offer is the serialx/ESPHome port URL (e.g.
+    ``esphome-hass://esphome/<entry>?port_name=Lumagen``), which HA's
+    device registry rejects as an invalid URL scheme. The user's gateway
+    to this device is the ESPHome integration itself, which is already
+    linked via the device registry's ``via_device`` conventions.
     """
 
     _attr_has_entity_name = True
@@ -32,5 +39,4 @@ class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
             model=state.model if state else None,
             sw_version=state.firmware if state else None,
             name=coordinator.config_entry.title,
-            configuration_url=coordinator.config_entry.data.get("url"),
         )
