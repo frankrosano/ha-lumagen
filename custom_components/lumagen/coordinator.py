@@ -61,16 +61,18 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         Errors here become ``ConfigEntryNotReady`` automatically — HA will
         retry setup on an exponential backoff. The subscription is wired
         before ``start()`` so the startup handshake's own responses feed
-        straight into HA state.
+        straight into HA state. We raise without ``from err`` so HA logs
+        a clean retry notice rather than the full stack trace — reconnect
+        loops are expected, not bugs.
         """
         self._unsubscribe = self.client.subscribe(self._on_state_update)
         try:
             await self.client.start()
         except LumagenConnectionError as err:
-            raise ConfigEntryNotReady(str(err)) from err
+            raise ConfigEntryNotReady(str(err)) from None
         except LumagenError as err:
             # Anything else from the library is unexpected at setup; surface
-            # it to the user with full context.
+            # it with full context so it's debuggable.
             raise ConfigEntryNotReady(f"Unexpected Lumagen error: {err}") from err
 
     async def _async_update_data(self) -> LumagenState:

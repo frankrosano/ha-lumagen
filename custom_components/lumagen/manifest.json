@@ -2,6 +2,7 @@
   "domain": "lumagen",
   "name": "Lumagen Radiance Pro",
   "version": "0.1.0",
+  "after_dependencies": ["esphome"],
   "codeowners": ["@frankrosano"],
   "config_flow": true,
   "dependencies": ["usb"],
