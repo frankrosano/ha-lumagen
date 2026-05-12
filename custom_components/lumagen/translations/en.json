@@ -23,7 +23,8 @@
   "entity": {
     "binary_sensor": {
       "power": { "name": "Power" },
-      "is_hdr": { "name": "HDR active" }
+      "is_hdr": { "name": "HDR active" },
+      "serial_connected": { "name": "Serial connected" }
     },
     "sensor": {
       "model": { "name": "Model" },

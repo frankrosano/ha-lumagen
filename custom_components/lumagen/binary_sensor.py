@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pylumagen import LumagenState
@@ -36,6 +37,13 @@ BINARY_SENSORS: tuple[LumagenBinarySensorDescription, ...] = (
         key="is_hdr",
         translation_key="is_hdr",
         value_fn=lambda s: s.is_hdr,
+    ),
+    LumagenBinarySensorDescription(
+        key="serial_connected",
+        translation_key="serial_connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: None,  # handled via special override below
     ),
 )
 
@@ -66,5 +74,14 @@ class LumagenBinarySensor(LumagenBaseEntity, BinarySensorEntity):
         self.entity_description = description
 
     @property
+    def available(self) -> bool:
+        """Serial-connected sensor is always available — it reports the connection state."""
+        if self.entity_description.key == "serial_connected":
+            return True
+        return super().available
+
+    @property
     def is_on(self) -> bool | None:
+        if self.entity_description.key == "serial_connected":
+            return self.coordinator.client.available
         return self.entity_description.value_fn(self.coordinator.data)

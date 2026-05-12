@@ -40,3 +40,12 @@ class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
             sw_version=state.firmware if state else None,
             name=coordinator.config_entry.title,
         )
+
+    @property
+    def available(self) -> bool:
+        """Mark entities unavailable when the Lumagen stops responding.
+
+        Checks both the coordinator's own availability (transport connected)
+        and the client's staleness detection (no response in stale_timeout).
+        """
+        return super().available and self.coordinator.client.available
