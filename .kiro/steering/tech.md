@@ -12,7 +12,7 @@
 - `manifest.json` declares:
   - `dependencies: ["usb"]` — needed for the serial-port dropdown
   - `after_dependencies: ["esphome"]` — so adopted ESPHome devices have set up before us
-  - `iot_class: "local_push"` — Lumagen `Full v4` reporting is the primary path; polling is fallback
+  - `iot_class: "local_push"` — Lumagen `Full v5` reporting is the primary path; polling is fallback
   - `config_flow: true`, `integration_type: "device"`, `quality_scale: "bronze"`
 
 ## Runtime Dependency

@@ -9,21 +9,26 @@ ha-lumagen/
 ├── custom_components/
 │   └── lumagen/                         # ← the actual integration; this is what ships
 │       ├── manifest.json                # domain, deps, requirements, quality scale
-│       ├── const.py                     # DOMAIN, MANUFACTURER, CONF_*, PLATFORMS tuple, timeouts
-│       ├── __init__.py                  # async_setup_entry / async_unload_entry / platform forwarding
+│       ├── const.py                     # DOMAIN, MANUFACTURER, CONF_*, PLATFORMS tuple, timeouts, service constants
+│       ├── __init__.py                  # async_setup_entry / async_unload_entry / send_raw_command service
 │       ├── config_flow.py               # serial-port dropdown + ZQS01 device-info validation
 │       ├── coordinator.py               # DataUpdateCoordinator wrapping pylumagen.LumagenClient
 │       ├── entity.py                    # shared base class for Lumagen entities
-│       ├── binary_sensor.py             # Power, HDR active
+│       ├── binary_sensor.py             # Power, HDR active, Auto aspect (diag), Serial connected (diag)
 │       ├── sensor.py                    # Model/Firmware (diagnostic) + state sensors
-│       ├── button.py                    # OSD nav, direct inputs, aspects, memories, etc.
-│       ├── select.py                    # Input / Aspect / Memory selects
+│       ├── button.py                    # OSD nav, direct inputs, aspects, memories, redetect aspect, etc.
+│       ├── select.py                    # Input / Aspect / Memory / Sharpness sensitivity / Subtitle shift
+│       ├── switch.py                    # Sharpness enabled, Game mode
+│       ├── number.py                    # Sharpness level (0-7), Min fan speed (0-9)
+│       ├── services.yaml                # send_raw_command service schema
 │       ├── strings.json                 # English UI strings (source of truth for translations)
 │       └── translations/                # generated/translated locale JSON
 └── tests/
     ├── conftest.py                      # shared fixtures (HA, mocked pylumagen client)
     ├── test_config_flow.py
-    └── test_select.py
+    ├── test_select.py
+    ├── test_switch_number_select.py     # Phase 1 entity dispatch helpers
+    └── test_send_raw_command.py         # service registration / dispatch / validation
 ```
 
 ## Conventions

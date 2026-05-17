@@ -64,6 +64,14 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         straight into HA state. We raise without ``from err`` so HA logs
         a clean retry notice rather than the full stack trace — reconnect
         loops are expected, not bugs.
+
+        After the handshake, we kick off queries for state that isn't part
+        of pylumagen's default startup sequence (sharpness, game mode,
+        auto-aspect status). These aren't included in pylumagen's handshake
+        because not every consumer wants them; ha-lumagen entities do, so
+        we ask for them here. Errors are tolerated — a slow Lumagen will
+        still respond to the next 60s poll cycle, and the entities will
+        remain ``unknown`` until then rather than blocking setup.
         """
         self._unsubscribe = self.client.subscribe(self._on_state_update)
         try:
@@ -74,6 +82,18 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
             # Anything else from the library is unexpected at setup; surface
             # it with full context so it's debuggable.
             raise ConfigEntryNotReady(f"Unexpected Lumagen error: {err}") from err
+
+        # Best-effort post-handshake queries. Don't propagate errors —
+        # entity availability still works without them.
+        for query in (
+            self.client.query_sharpness,
+            self.client.query_game_mode,
+            self.client.query_auto_aspect,
+        ):
+            try:
+                await query()
+            except LumagenError as err:
+                _LOGGER.debug("Initial %s query failed: %s", query.__name__, err)
 
     async def _async_update_data(self) -> LumagenState:
         """Seed the initial data after ``start()``.

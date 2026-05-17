@@ -1,0 +1,35 @@
+send_raw_command:
+  name: Send raw command
+  description: >
+    Send an arbitrary RS-232 command to the Lumagen. Useful for advanced
+    or experimental commands that aren't exposed as entities — for
+    example HDR test-pattern info frames (ZY540-548) used during display
+    calibration. Refer to Tip0011_RS232CommandInterface for the full
+    command vocabulary. Responses (if any) are parsed by pylumagen and
+    update the relevant state fields automatically.
+  target:
+    entity:
+      integration: lumagen
+      domain: button
+  fields:
+    command:
+      name: Command
+      description: >
+        The command string, exactly as documented (no terminator). For
+        example "ZQI53" to query game mode, or "ZY551" to enable game
+        mode. ZY-prefixed commands typically need the carriage-return
+        terminator — set the "Add CR terminator" option for those.
+      required: true
+      example: "ZQI53"
+      selector:
+        text:
+    cr:
+      name: Add CR terminator
+      description: >
+        Append a carriage return to the command. Most ZY-prefixed
+        commands need this; most one-character remote commands don't.
+        Check Tip0011 for the specific command's requirement.
+      required: false
+      default: false
+      selector:
+        boolean:

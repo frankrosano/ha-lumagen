@@ -78,6 +78,11 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
                              press_fn=_cmd("~")),
     LumagenButtonDescription(key="auto_aspect_off", translation_key="auto_aspect_off",
                              press_fn=_cmd("V")),
+    LumagenButtonDescription(
+        key="redetect_aspect",
+        translation_key="redetect_aspect",
+        press_fn=lambda c: c.reset_auto_aspect(),
+    ),
 
     # --- Memory slots ---
     LumagenButtonDescription(key="memory_a", translation_key="memory_a", press_fn=_cmd("a")),

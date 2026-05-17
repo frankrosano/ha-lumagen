@@ -24,6 +24,7 @@
     "binary_sensor": {
       "power": { "name": "Power" },
       "is_hdr": { "name": "HDR active" },
+      "auto_aspect": { "name": "Auto aspect detection" },
       "serial_connected": { "name": "Serial connected" }
     },
     "sensor": {
@@ -63,7 +64,8 @@
         "state": {
           "i": "Interlaced",
           "p": "Progressive",
-          "-": "No input"
+          "-": "No input",
+          "n": "No input"
         }
       }
     },
@@ -96,6 +98,7 @@
       "aspect_2_40": { "name": "Aspect 2.40" },
       "auto_aspect_on": { "name": "Auto aspect on" },
       "auto_aspect_off": { "name": "Auto aspect off" },
+      "redetect_aspect": { "name": "Redetect aspect" },
       "memory_a": { "name": "Memory A" },
       "memory_b": { "name": "Memory B" },
       "memory_c": { "name": "Memory C" },
@@ -110,7 +113,39 @@
     "select": {
       "input_select": { "name": "Input" },
       "aspect_select": { "name": "Aspect ratio" },
-      "memory_select": { "name": "Memory" }
+      "memory_select": { "name": "Memory" },
+      "sharpness_sensitivity": {
+        "name": "Sharpness sensitivity",
+        "state": { "Normal": "Normal", "High": "High" }
+      },
+      "subtitle_shift": {
+        "name": "Subtitle shift",
+        "state": { "Off": "Off", "Small": "Small", "Large": "Large" }
+      }
+    },
+    "switch": {
+      "sharpness_enabled": { "name": "Sharpness" },
+      "game_mode": { "name": "Game mode" }
+    },
+    "number": {
+      "sharpness_level": { "name": "Sharpness level" },
+      "fan_speed": { "name": "Minimum fan speed" }
+    }
+  },
+  "services": {
+    "send_raw_command": {
+      "name": "Send raw command",
+      "description": "Send an arbitrary RS-232 command string to the Lumagen. Useful for advanced controls not exposed as entities.",
+      "fields": {
+        "command": {
+          "name": "Command",
+          "description": "Command to send (no terminator)."
+        },
+        "cr": {
+          "name": "Add CR terminator",
+          "description": "Append a carriage return. Most ZY-prefixed commands need this."
+        }
+      }
     }
   }
 }

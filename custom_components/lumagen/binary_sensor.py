@@ -39,6 +39,12 @@ BINARY_SENSORS: tuple[LumagenBinarySensorDescription, ...] = (
         value_fn=lambda s: s.is_hdr,
     ),
     LumagenBinarySensorDescription(
+        key="auto_aspect",
+        translation_key="auto_aspect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.auto_aspect,
+    ),
+    LumagenBinarySensorDescription(
         key="serial_connected",
         translation_key="serial_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,

@@ -1,6 +1,6 @@
 [project]
 name = "ha-lumagen"
-version = "0.1.0"
+version = "0.2.0"
 description = "Home Assistant custom integration for Lumagen Radiance Pro (development metadata; the deployable artifact is custom_components/lumagen/)."
 requires-python = ">=3.14"
 

@@ -51,22 +51,28 @@ Direct RS-232 (cabled from your HA host to the Lumagen's DB9) also works — the
 
 ## Lumagen-side prerequisite: unsolicited reporting
 
-For real-time updates rather than 60-second polling, enable Full v4 reporting on the Lumagen:
+For real-time updates rather than 60-second polling, enable Full v5 (or Full v4 on older firmware) reporting on the Lumagen:
 
 1. On the Lumagen remote or OSD, press `MENU`.
 2. Navigate: **Other → I/O Setup → RS-232 Setup → Report mode changes**.
-3. Cycle to **Full v4**.
+3. Cycle to **Full v5** (or **Full v4** on older firmware).
 4. Press `OK`, then `SAVE` to persist.
 
 The integration works either way; this just makes it snappier.
 
 ## Exposed entities
 
-- **Binary sensors**: Power, HDR active
+- **Binary sensors**: Power, HDR active, Auto aspect detection (diagnostic), Serial connected (diagnostic)
 - **Sensors** (diagnostic): Model, Firmware
 - **Sensors** (primary): Current input, Input memory, Source/Output resolution, Source/Output refresh rate (Hz), Source/Content aspect, Colorspace (enum), HDR status (enum), Input status (enum), Source mode (enum: Interlaced / Progressive / No input)
-- **Buttons**: Power on/Standby, full OSD nav (Menu/Exit/OK/Menu off/Up/Down/Left/Right), direct inputs 1–8 + Previous, all aspect presets (4:3, Letterbox, 16:9, 16:9 NZ, 1.85, 2.35, 2.40), Auto aspect on/off, Memory A–D, HDR setup, Test pattern, OSD on/off, Save to NVRAM, Query status
-- **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D)
+- **Buttons**: Power on/Standby, full OSD nav (Menu/Exit/OK/Menu off/Up/Down/Left/Right), direct inputs 1–8 + Previous, all aspect presets (4:3, Letterbox, 16:9, 16:9 NZ, 1.85, 2.35, 2.40), Auto aspect on/off, Redetect aspect, Memory A–D, HDR setup, Test pattern, OSD on/off, Save to NVRAM, Query status
+- **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D), Sharpness sensitivity (Normal/High), Subtitle shift (Off/Small/Large)
+- **Switches**: Sharpness, Game mode
+- **Numbers**: Sharpness level (0–7), Minimum fan speed (0–9)
+
+## Service
+
+- `lumagen.send_raw_command` — send any RS-232 command directly to the Lumagen. Useful for advanced features that aren't surfaced as entities (e.g. HDR test-pattern info frames during calibration). Pass `command` and optional `cr` (most `ZY`-prefixed commands need `cr: true`).
 
 ## Status
 
