@@ -62,6 +62,11 @@ async def _set_fan_speed(
     await client.set_fan_speed(level)
 
 
+# HDR intensity-mapping max nits is a compound write — pairs with the
+# gamma-mode select. Both entities share optimistic state on the
+# coordinator since neither has a device-side query. The setter is
+# wired up in the entity class (it needs the coordinator, not just the
+# client) — the description's set_fn for this knob is unused.
 NUMBERS: tuple[LumagenNumberDescription, ...] = (
     LumagenNumberDescription(
         key="sharpness_level",
@@ -86,6 +91,22 @@ NUMBERS: tuple[LumagenNumberDescription, ...] = (
         value_fn=lambda _s: None,
         set_fn=_set_fan_speed,
     ),
+    LumagenNumberDescription(
+        key="hdr_mapping_max_nits",
+        translation_key="hdr_mapping_max_nits",
+        native_min_value=0,
+        native_max_value=10000,
+        native_step=50,
+        native_unit_of_measurement="cd/m²",
+        mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
+        # Read from coordinator's optimistic state, not LumagenState —
+        # the entity overrides native_value to do this. set_fn is unused
+        # for this entry; the entity dispatches directly to the
+        # coordinator's compound writer.
+        value_fn=lambda _s: None,
+        set_fn=_set_fan_speed,  # placeholder; entity overrides
+    ),
 )
 
 
@@ -101,7 +122,13 @@ async def async_setup_entry(
 
 
 class LumagenNumber(LumagenBaseEntity, NumberEntity):
-    """Bidirectional number backed by pylumagen state + setter."""
+    """Bidirectional number backed by pylumagen state + setter.
+
+    The HDR mapping max-nits entry is a special case: the underlying
+    ZY417 command pairs the nits value with a gamma-mode select. Both
+    halves live as optimistic state on the coordinator; this entity
+    reads/writes through that shared state rather than via state_fn.
+    """
 
     entity_description: LumagenNumberDescription
 
@@ -118,6 +145,8 @@ class LumagenNumber(LumagenBaseEntity, NumberEntity):
 
     @property
     def native_value(self) -> int | None:
+        if self.entity_description.key == "hdr_mapping_max_nits":
+            return self.coordinator.hdr_mapping_max_nits
         from_state = self.entity_description.value_fn(self.coordinator.data)
         if from_state is not None:
             return from_state
@@ -125,6 +154,16 @@ class LumagenNumber(LumagenBaseEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         level = int(value)
+        if self.entity_description.key == "hdr_mapping_max_nits":
+            # Compound write: preserve the current gamma_mode from the
+            # coordinator's optimistic state.
+            await self.coordinator.client.set_hdr_intensity_mapping(
+                display_max_nits=level,
+                gamma_mode=self.coordinator.hdr_mapping_gamma_mode,
+            )
+            self.coordinator.hdr_mapping_max_nits = level
+            self.async_write_ha_state()
+            return
         await self.entity_description.set_fn(
             self.coordinator.client, self.coordinator.data, level
         )

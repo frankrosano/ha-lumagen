@@ -55,6 +55,16 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         self.client = client
         self._unsubscribe: Callable[[], None] | None = None
 
+        # Optimistic state for compound write-only commands.
+        # The Lumagen has no query for the HDR intensity-mapping settings
+        # (ZY417), so the number + select entities that touch it both
+        # need a shared place to remember the last-set values. They live
+        # here on the coordinator so a flip between entities doesn't lose
+        # context. Defaults match the Lumagen's documented power-on state
+        # (mapping disabled, auto gamma).
+        self.hdr_mapping_max_nits: int = 0
+        self.hdr_mapping_gamma_mode: str = "A"
+
     async def _async_setup(self) -> None:
         """Start the pylumagen client; called once by the coordinator.
 
@@ -89,6 +99,8 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
             self.client.query_sharpness,
             self.client.query_game_mode,
             self.client.query_auto_aspect,
+            self.client.query_display_rec2020,
+            self.client.query_source_hdr_status,
         ):
             try:
                 await query()

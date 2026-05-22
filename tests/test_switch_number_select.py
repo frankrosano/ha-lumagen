@@ -177,3 +177,85 @@ def test_current_sharpness_sensitivity_label(
 def test_closest_aspect_label_still_works() -> None:
     assert _closest_aspect_label("178") == "16:9"
     assert _closest_aspect_label("240") == "2.40"
+
+
+# ---------- Phase 2 HDR mapping (compound write via coordinator) ----------
+
+
+def _coordinator_with(client: MagicMock) -> MagicMock:
+    """Build a minimal coordinator stub with the HDR optimistic fields."""
+    coord = MagicMock()
+    coord.client = client
+    coord.data = LumagenState()
+    coord.hdr_mapping_max_nits = 0
+    coord.hdr_mapping_gamma_mode = "A"
+    return coord
+
+
+async def test_hdr_mapping_max_nits_set_preserves_gamma_mode() -> None:
+    """Changing the nits writes ZY417 with the *current* gamma_mode preserved."""
+    from custom_components.lumagen.number import NUMBERS, LumagenNumber
+
+    description = next(d for d in NUMBERS if d.key == "hdr_mapping_max_nits")
+    client = MagicMock()
+    client.set_hdr_intensity_mapping = AsyncMock()
+    coord = _coordinator_with(client)
+    coord.hdr_mapping_gamma_mode = "H"  # user previously chose force-HDR
+
+    entity = LumagenNumber.__new__(LumagenNumber)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity._optimistic_value = None
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_set_native_value(1500)
+
+    client.set_hdr_intensity_mapping.assert_awaited_once_with(
+        display_max_nits=1500, gamma_mode="H"
+    )
+    # Coordinator's optimistic state updates so subsequent reads reflect it.
+    assert coord.hdr_mapping_max_nits == 1500
+
+
+async def test_hdr_gamma_mode_set_preserves_max_nits() -> None:
+    """Changing the gamma mode writes ZY417 with the *current* max_nits preserved."""
+    from custom_components.lumagen.select import SELECTS, LumagenSelect
+
+    description = next(d for d in SELECTS if d.key == "hdr_gamma_mode")
+    client = MagicMock()
+    client.set_hdr_intensity_mapping = AsyncMock()
+    coord = _coordinator_with(client)
+    coord.hdr_mapping_max_nits = 1000  # user previously set 1000 nits
+
+    entity = LumagenSelect.__new__(LumagenSelect)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity._optimistic_option = None
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_select_option("HDR")
+
+    client.set_hdr_intensity_mapping.assert_awaited_once_with(
+        display_max_nits=1000, gamma_mode="H"
+    )
+    assert coord.hdr_mapping_gamma_mode == "H"
+
+
+async def test_hdr_gamma_mode_unknown_label_is_no_op() -> None:
+    """A label outside the documented Auto/HDR/SDR set must not write."""
+    from custom_components.lumagen.select import SELECTS, LumagenSelect
+
+    description = next(d for d in SELECTS if d.key == "hdr_gamma_mode")
+    client = MagicMock()
+    client.set_hdr_intensity_mapping = AsyncMock()
+    coord = _coordinator_with(client)
+
+    entity = LumagenSelect.__new__(LumagenSelect)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity._optimistic_option = None
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_select_option("Bogus")
+
+    client.set_hdr_intensity_mapping.assert_not_called()

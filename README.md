@@ -62,13 +62,13 @@ The integration works either way; this just makes it snappier.
 
 ## Exposed entities
 
-- **Binary sensors**: Power, HDR active, Auto aspect detection (diagnostic), Serial connected (diagnostic)
-- **Sensors** (diagnostic): Model, Firmware
+- **Binary sensors**: Power, HDR active, Auto aspect detection (diagnostic), Display supports Rec.2020 (diagnostic), Serial connected (diagnostic)
+- **Sensors** (diagnostic): Model, Firmware, HDR source max/min luminance, HDR source MaxCLL
 - **Sensors** (primary): Current input, Input memory, Source/Output resolution, Source/Output refresh rate (Hz), Source/Content aspect, Colorspace (enum), HDR status (enum), Input status (enum), Source mode (enum: Interlaced / Progressive / No input)
 - **Buttons**: Power on/Standby, full OSD nav (Menu/Exit/OK/Menu off/Up/Down/Left/Right), direct inputs 1–8 + Previous, all aspect presets (4:3, Letterbox, 16:9, 16:9 NZ, 1.85, 2.35, 2.40), Auto aspect on/off, Redetect aspect, Memory A–D, HDR setup, Test pattern, OSD on/off, Save to NVRAM, Query status
-- **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D), Sharpness sensitivity (Normal/High), Subtitle shift (Off/Small/Large)
+- **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D), Sharpness sensitivity (Normal/High), Subtitle shift (Off/Small/Large), HDR gamma mode (Auto/HDR/SDR)
 - **Switches**: Sharpness, Game mode
-- **Numbers**: Sharpness level (0–7), Minimum fan speed (0–9)
+- **Numbers**: Sharpness level (0–7), Minimum fan speed (0–9), HDR mapping max nits (0 to disable; 50–10000 to set display peak)
 
 ## Service
 

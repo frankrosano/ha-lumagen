@@ -120,6 +120,36 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
         options=[sm.value for sm in SourceMode],
         value_fn=lambda s: s.source_mode.value if s.source_mode else None,
     ),
+    # --- HDR source mastering metadata (from !I52) ---
+    # All three are diagnostic — they describe the encoded content, not
+    # something the user controls. They become available only when the
+    # source is HDR; SDR sources keep them at None and the entity reads
+    # "unknown" rather than "0 nits".
+    LumagenSensorDescription(
+        key="hdr_source_max_luminance",
+        translation_key="hdr_source_max_luminance",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="cd/m²",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.hdr_source_max_luminance,
+    ),
+    LumagenSensorDescription(
+        key="hdr_source_min_luminance",
+        translation_key="hdr_source_min_luminance",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="cd/m²",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=4,
+        value_fn=lambda s: s.hdr_source_min_luminance,
+    ),
+    LumagenSensorDescription(
+        key="hdr_source_max_cll",
+        translation_key="hdr_source_max_cll",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        native_unit_of_measurement="cd/m²",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: s.hdr_source_max_cll,
+    ),
 )
 
 

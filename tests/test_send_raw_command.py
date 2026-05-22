@@ -29,6 +29,8 @@ def _make_client_mock() -> MagicMock:
     client.query_sharpness = AsyncMock()
     client.query_game_mode = AsyncMock()
     client.query_auto_aspect = AsyncMock()
+    client.query_display_rec2020 = AsyncMock()
+    client.query_source_hdr_status = AsyncMock()
     client.connected = True
     client.subscribe = MagicMock(return_value=lambda: None)
     client.state = LumagenState(model="RadiancePro", firmware="030225")

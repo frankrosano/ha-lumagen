@@ -45,6 +45,12 @@ BINARY_SENSORS: tuple[LumagenBinarySensorDescription, ...] = (
         value_fn=lambda s: s.auto_aspect,
     ),
     LumagenBinarySensorDescription(
+        key="display_supports_rec2020",
+        translation_key="display_supports_rec2020",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.display_supports_rec2020,
+    ),
+    LumagenBinarySensorDescription(
         key="serial_connected",
         translation_key="serial_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,

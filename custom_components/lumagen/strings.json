@@ -25,6 +25,7 @@
       "power": { "name": "Power" },
       "is_hdr": { "name": "HDR active" },
       "auto_aspect": { "name": "Auto aspect detection" },
+      "display_supports_rec2020": { "name": "Display supports Rec.2020" },
       "serial_connected": { "name": "Serial connected" }
     },
     "sensor": {
@@ -67,7 +68,10 @@
           "-": "No input",
           "n": "No input"
         }
-      }
+      },
+      "hdr_source_max_luminance": { "name": "HDR source max luminance" },
+      "hdr_source_min_luminance": { "name": "HDR source min luminance" },
+      "hdr_source_max_cll": { "name": "HDR source MaxCLL" }
     },
     "button": {
       "power_on": { "name": "Power on" },
@@ -121,6 +125,10 @@
       "subtitle_shift": {
         "name": "Subtitle shift",
         "state": { "Off": "Off", "Small": "Small", "Large": "Large" }
+      },
+      "hdr_gamma_mode": {
+        "name": "HDR gamma mode",
+        "state": { "Auto": "Auto", "HDR": "HDR", "SDR": "SDR" }
       }
     },
     "switch": {
@@ -129,7 +137,8 @@
     },
     "number": {
       "sharpness_level": { "name": "Sharpness level" },
-      "fan_speed": { "name": "Minimum fan speed" }
+      "fan_speed": { "name": "Minimum fan speed" },
+      "hdr_mapping_max_nits": { "name": "HDR mapping max nits" }
     }
   },
   "services": {

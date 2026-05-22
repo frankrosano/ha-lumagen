@@ -71,6 +71,16 @@ _SUBTITLE_SHIFT_OPTIONS = ("Off", "Small", "Large")
 _SUBTITLE_SHIFT_TO_LEVEL = {"Off": 0, "Small": 1, "Large": 2}
 
 
+# --- HDR gamma mode (compound-write — pairs with hdr_mapping_max_nits) ---
+# The Lumagen has no documented query for the active mapping values, so
+# both halves of the ZY417 compound are tracked optimistically on the
+# coordinator. The entity handles read/write directly against that state
+# rather than going through select_fn.
+_HDR_GAMMA_MODE_OPTIONS = ("Auto", "HDR", "SDR")
+_HDR_GAMMA_LABEL_TO_WIRE = {"Auto": "A", "HDR": "H", "SDR": "S"}
+_HDR_GAMMA_WIRE_TO_LABEL = {v: k for k, v in _HDR_GAMMA_LABEL_TO_WIRE.items()}
+
+
 # --- select_fn implementations ---
 
 
@@ -196,6 +206,18 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
         current_fn=lambda _s: None,
         select_fn=_select_subtitle_shift,
     ),
+    LumagenSelectDescription(
+        key="hdr_gamma_mode",
+        translation_key="hdr_gamma_mode",
+        options=list(_HDR_GAMMA_MODE_OPTIONS),
+        entity_category=EntityCategory.CONFIG,
+        # Read/write goes through coordinator.hdr_mapping_gamma_mode —
+        # the entity overrides the dispatch. current_fn / select_fn here
+        # are unused for this entry but must be set to satisfy the
+        # dataclass contract.
+        current_fn=lambda _s: None,
+        select_fn=_select_subtitle_shift,  # placeholder; entity overrides
+    ),
 )
 
 
@@ -215,6 +237,11 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
 
     Falls back to a locally-tracked optimistic value when ``current_fn``
     returns ``None`` (used for write-only selects like subtitle shift).
+
+    The HDR gamma-mode entry is a special case: the underlying ZY417
+    command pairs the gamma byte with a numeric max-nits value. Both
+    halves live as optimistic state on the coordinator; this entity
+    reads/writes through that shared state.
     """
 
     entity_description: LumagenSelectDescription
@@ -230,6 +257,10 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
+        if self.entity_description.key == "hdr_gamma_mode":
+            wire = self.coordinator.hdr_mapping_gamma_mode
+            label = _HDR_GAMMA_WIRE_TO_LABEL.get(wire)
+            return label if label in (self.entity_description.options or []) else None
         current = self.entity_description.current_fn(self.coordinator.data)
         options = self.entity_description.options or []
         if current is None:
@@ -237,6 +268,17 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
         return current if current in options else None
 
     async def async_select_option(self, option: str) -> None:
+        if self.entity_description.key == "hdr_gamma_mode":
+            wire = _HDR_GAMMA_LABEL_TO_WIRE.get(option)
+            if wire is None:
+                return
+            await self.coordinator.client.set_hdr_intensity_mapping(
+                display_max_nits=self.coordinator.hdr_mapping_max_nits,
+                gamma_mode=wire,
+            )
+            self.coordinator.hdr_mapping_gamma_mode = wire
+            self.async_write_ha_state()
+            return
         await self.entity_description.select_fn(
             self.coordinator.client, self.coordinator.data, option
         )
