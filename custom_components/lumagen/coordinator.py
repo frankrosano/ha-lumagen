@@ -95,12 +95,19 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
 
         # Best-effort post-handshake queries. Don't propagate errors —
         # entity availability still works without them.
+        #
+        # query_input_labels is intentionally last: it serializes 8 label
+        # queries with a settle delay (~1s total), so running it after the
+        # quick single-shot queries lets those populate first. Labels are
+        # read once here; a mid-session relabel on the device won't refresh
+        # until the integration reloads.
         for query in (
             self.client.query_sharpness,
             self.client.query_game_mode,
             self.client.query_auto_aspect,
             self.client.query_display_rec2020,
             self.client.query_source_hdr_status,
+            self.client.query_input_labels,
         ):
             try:
                 await query()

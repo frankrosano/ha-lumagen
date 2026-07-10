@@ -31,6 +31,7 @@ def _make_client_mock() -> MagicMock:
     client.query_auto_aspect = AsyncMock()
     client.query_display_rec2020 = AsyncMock()
     client.query_source_hdr_status = AsyncMock()
+    client.query_input_labels = AsyncMock()
     client.connected = True
     client.subscribe = MagicMock(return_value=lambda: None)
     client.state = LumagenState(model="RadiancePro", firmware="030225")
@@ -168,6 +169,7 @@ async def test_initial_setup_queries_phase1_state(hass: HomeAssistant) -> None:
     client.query_sharpness.assert_awaited()
     client.query_game_mode.assert_awaited()
     client.query_auto_aspect.assert_awaited()
+    client.query_input_labels.assert_awaited()
 
 
 @pytest.fixture(autouse=True)

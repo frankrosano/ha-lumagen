@@ -18,7 +18,7 @@ import pytest
 from homeassistant.components.media_player import MediaPlayerState
 from pylumagen import Colorspace, HdrStatus, LumagenState
 
-from custom_components.lumagen.media_player import _SOURCE_LIST, LumagenMediaPlayer
+from custom_components.lumagen.media_player import LumagenMediaPlayer
 
 
 def _media_player(state: LumagenState) -> tuple[LumagenMediaPlayer, MagicMock]:
@@ -77,10 +77,30 @@ def test_source_from_current_input(
     assert entity.source == expected
 
 
-def test_source_list_is_inputs_1_to_8() -> None:
-    assert len(_SOURCE_LIST) == 8
-    assert _SOURCE_LIST[0] == "Input 1"
-    assert _SOURCE_LIST[-1] == "Input 8"
+def test_source_list_falls_back_to_input_n_without_labels() -> None:
+    entity, _ = _media_player(LumagenState())
+    assert entity.source_list == [f"Input {n}" for n in range(1, 9)]
+
+
+def test_source_list_uses_configured_labels_with_fallback() -> None:
+    entity, _ = _media_player(LumagenState(input_labels={1: "Apple TV", 3: "Roku"}))
+    assert entity.source_list == [
+        "Apple TV", "Input 2", "Roku", "Input 4",
+        "Input 5", "Input 6", "Input 7", "Input 8",
+    ]
+
+
+def test_source_uses_label_when_present() -> None:
+    entity, _ = _media_player(
+        LumagenState(current_input="03", input_labels={3: "Apple TV"})
+    )
+    assert entity.source == "Apple TV"
+
+
+def test_source_empty_label_falls_back() -> None:
+    """A cleared (empty-string) label must not render a blank source."""
+    entity, _ = _media_player(LumagenState(current_input="2", input_labels={2: ""}))
+    assert entity.source == "Input 2"
 
 
 # ---------- command dispatch ----------
@@ -104,8 +124,15 @@ async def test_select_source_dispatches_set_input() -> None:
     client.set_input.assert_awaited_once_with(5)
 
 
+async def test_select_source_by_configured_label_dispatches_set_input() -> None:
+    """Selecting a configured label resolves to that input's number."""
+    entity, client = _media_player(LumagenState(input_labels={2: "Roku"}))
+    await entity.async_select_source("Roku")
+    client.set_input.assert_awaited_once_with(2)
+
+
 async def test_select_source_unknown_label_is_no_op() -> None:
-    """A label outside the source_list must not write anything."""
+    """A label matching no input (label or fallback) must not write anything."""
     entity, client = _media_player(LumagenState())
     await entity.async_select_source("Input 99")
     client.set_input.assert_not_called()

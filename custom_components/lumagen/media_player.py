@@ -35,12 +35,22 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
 
-# This integration surfaces inputs 1-8 (parity with the prior input_select).
-# The client accepts 1-19 for models with more physical inputs; an input the
-# device reports outside 1-8 simply shows as no current selection.
+# This integration surfaces inputs 1-8. The client accepts 1-19 for models
+# with more physical inputs; an input the device reports outside 1-8 simply
+# shows as no current selection.
+#
+# Source names come from the Lumagen's configured input labels
+# (state.input_labels, populated by pylumagen's query_input_labels). Until
+# those land — or for any input the device didn't label — we fall back to
+# "Input N". source_list and the reverse label->input lookup are derived from
+# coordinator state on each read, so a relabel (or the first label arrival)
+# shows up without recreating the entity.
 _INPUT_COUNT = 8
-_SOURCE_LIST = [f"Input {n}" for n in range(1, _INPUT_COUNT + 1)]
-_SOURCE_TO_NUM = {label: n for n, label in enumerate(_SOURCE_LIST, start=1)}
+
+
+def _fallback_label(number: int) -> str:
+    """Default display name for input ``number`` when no configured label exists."""
+    return f"Input {number}"
 
 
 async def async_setup_entry(
@@ -58,7 +68,6 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
     # Primary entity for the device, so it takes the device name rather than
     # a "<device> Media player" suffix.
     _attr_name = None
-    _attr_source_list = _SOURCE_LIST
     _attr_supported_features = (
         MediaPlayerEntityFeature.TURN_ON
         | MediaPlayerEntityFeature.TURN_OFF
@@ -78,6 +87,18 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         # card and maps directly to the % / $ commands.
         return MediaPlayerState.ON if power_on else MediaPlayerState.OFF
 
+    def _label_for(self, number: int) -> str:
+        """Configured label for input ``number``, or the ``Input N`` fallback.
+
+        An empty configured label (user cleared it) is treated as "no label"
+        so the source never renders blank.
+        """
+        return self.coordinator.data.input_labels.get(number) or _fallback_label(number)
+
+    @property
+    def source_list(self) -> list[str]:
+        return [self._label_for(n) for n in range(1, _INPUT_COUNT + 1)]
+
     @property
     def source(self) -> str | None:
         raw = self.coordinator.data.current_input
@@ -87,10 +108,11 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
             number = int(raw)
         except (TypeError, ValueError):
             return None
-        # Snap to the known label; an input outside 1-8 shows as no selection
-        # rather than an out-of-list value the frontend would reject.
-        label = f"Input {number}"
-        return label if label in _SOURCE_TO_NUM else None
+        if not 1 <= number <= _INPUT_COUNT:
+            # Inputs outside the surfaced range show as no selection rather
+            # than an out-of-list value the frontend would reject.
+            return None
+        return self._label_for(number)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -111,7 +133,11 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         await self.coordinator.client.standby()
 
     async def async_select_source(self, source: str) -> None:
-        number = _SOURCE_TO_NUM.get(source)
-        if number is None:
-            return
-        await self.coordinator.client.set_input(number)
+        # Resolve against the same _label_for used to build source_list, so a
+        # configured label and its "Input N" fallback both match. First match
+        # wins if two inputs happen to share a label.
+        for number in range(1, _INPUT_COUNT + 1):
+            if self._label_for(number) == source:
+                await self.coordinator.client.set_input(number)
+                return
+        # Unknown source label — no-op.
