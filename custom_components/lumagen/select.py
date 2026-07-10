@@ -84,12 +84,6 @@ _HDR_GAMMA_WIRE_TO_LABEL = {v: k for k, v in _HDR_GAMMA_LABEL_TO_WIRE.items()}
 # --- select_fn implementations ---
 
 
-async def _select_input(
-    client: LumagenClient, _state: LumagenState, value: str
-) -> None:
-    await client.set_input(int(value))
-
-
 async def _select_aspect(
     client: LumagenClient, _state: LumagenState, value: str
 ) -> None:
@@ -128,16 +122,6 @@ async def _select_subtitle_shift(
 # --- current_fn helpers ---
 
 
-def _strip_zeros(raw: str | None) -> str | None:
-    """The Lumagen reports inputs as zero-padded ('03'); strip for display."""
-    if raw is None:
-        return None
-    try:
-        return str(int(raw))
-    except (TypeError, ValueError):
-        return raw
-
-
 def _closest_aspect_label(raw: str | None) -> str | None:
     """Return the dropdown label whose target is closest to ``raw``.
 
@@ -167,13 +151,6 @@ def _current_sharpness_sensitivity(state: LumagenState) -> str | None:
 
 
 SELECTS: tuple[LumagenSelectDescription, ...] = (
-    LumagenSelectDescription(
-        key="input_select",
-        translation_key="input_select",
-        options=[str(n) for n in range(1, 9)],
-        current_fn=lambda s: _strip_zeros(s.current_input),
-        select_fn=_select_input,
-    ),
     LumagenSelectDescription(
         key="aspect_select",
         translation_key="aspect_select",

@@ -22,7 +22,9 @@ ATTR_CR: Final = "cr"
 PLATFORMS: Final = (
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.MEDIA_PLAYER,
     Platform.NUMBER,
+    Platform.REMOTE,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,

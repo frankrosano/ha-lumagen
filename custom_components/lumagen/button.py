@@ -52,43 +52,17 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
     LumagenButtonDescription(key="left", translation_key="left", press_fn=_cmd("<")),
     LumagenButtonDescription(key="right", translation_key="right", press_fn=_cmd(">")),
 
-    # --- Direct inputs 1-8 (+ previous) ---
-    LumagenButtonDescription(key="input_1", translation_key="input_1", press_fn=_cmd("i1")),
-    LumagenButtonDescription(key="input_2", translation_key="input_2", press_fn=_cmd("i2")),
-    LumagenButtonDescription(key="input_3", translation_key="input_3", press_fn=_cmd("i3")),
-    LumagenButtonDescription(key="input_4", translation_key="input_4", press_fn=_cmd("i4")),
-    LumagenButtonDescription(key="input_5", translation_key="input_5", press_fn=_cmd("i5")),
-    LumagenButtonDescription(key="input_6", translation_key="input_6", press_fn=_cmd("i6")),
-    LumagenButtonDescription(key="input_7", translation_key="input_7", press_fn=_cmd("i7")),
-    LumagenButtonDescription(key="input_8", translation_key="input_8", press_fn=_cmd("i8")),
-    LumagenButtonDescription(key="previous_input", translation_key="previous_input",
-                             press_fn=_cmd("P")),
-
-    # --- Aspect presets ---
-    LumagenButtonDescription(key="aspect_4_3", translation_key="aspect_4_3", press_fn=_cmd("n")),
-    LumagenButtonDescription(key="aspect_letterbox", translation_key="aspect_letterbox",
-                             press_fn=_cmd("l")),
-    LumagenButtonDescription(key="aspect_16_9", translation_key="aspect_16_9", press_fn=_cmd("w")),
-    LumagenButtonDescription(key="aspect_16_9_nz", translation_key="aspect_16_9_nz",
-                             press_fn=_cmd("*")),
-    LumagenButtonDescription(key="aspect_1_85", translation_key="aspect_1_85", press_fn=_cmd("j")),
-    LumagenButtonDescription(key="aspect_2_35", translation_key="aspect_2_35", press_fn=_cmd("W")),
-    LumagenButtonDescription(key="aspect_2_40", translation_key="aspect_2_40", press_fn=_cmd("G")),
-    LumagenButtonDescription(key="auto_aspect_on", translation_key="auto_aspect_on",
-                             press_fn=_cmd("~")),
-    LumagenButtonDescription(key="auto_aspect_off", translation_key="auto_aspect_off",
-                             press_fn=_cmd("V")),
+    # --- Aspect (momentary only) ---
+    # Preset selection (4:3, 16:9, 2.35, …) and memory recall (A-D) now
+    # live on the aspect_select / memory_select entities, and direct input
+    # selection on input_select — those show current state instead of being
+    # write-only. Auto-aspect on/off is now the auto_aspect switch. Only the
+    # stateless "re-run aspect detection now" action stays a button.
     LumagenButtonDescription(
         key="redetect_aspect",
         translation_key="redetect_aspect",
         press_fn=lambda c: c.reset_auto_aspect(),
     ),
-
-    # --- Memory slots ---
-    LumagenButtonDescription(key="memory_a", translation_key="memory_a", press_fn=_cmd("a")),
-    LumagenButtonDescription(key="memory_b", translation_key="memory_b", press_fn=_cmd("b")),
-    LumagenButtonDescription(key="memory_c", translation_key="memory_c", press_fn=_cmd("c")),
-    LumagenButtonDescription(key="memory_d", translation_key="memory_d", press_fn=_cmd("d")),
 
     # --- Misc ---
     LumagenButtonDescription(key="hdr_setup", translation_key="hdr_setup", press_fn=_cmd("Y")),

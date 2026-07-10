@@ -24,7 +24,6 @@
     "binary_sensor": {
       "power": { "name": "Power" },
       "is_hdr": { "name": "HDR active" },
-      "auto_aspect": { "name": "Auto aspect detection" },
       "display_supports_rec2020": { "name": "Display supports Rec.2020" },
       "serial_connected": { "name": "Serial connected" }
     },
@@ -84,29 +83,7 @@
       "down": { "name": "Down" },
       "left": { "name": "Left" },
       "right": { "name": "Right" },
-      "input_1": { "name": "Input 1" },
-      "input_2": { "name": "Input 2" },
-      "input_3": { "name": "Input 3" },
-      "input_4": { "name": "Input 4" },
-      "input_5": { "name": "Input 5" },
-      "input_6": { "name": "Input 6" },
-      "input_7": { "name": "Input 7" },
-      "input_8": { "name": "Input 8" },
-      "previous_input": { "name": "Previous input" },
-      "aspect_4_3": { "name": "Aspect 4:3" },
-      "aspect_letterbox": { "name": "Aspect letterbox" },
-      "aspect_16_9": { "name": "Aspect 16:9" },
-      "aspect_16_9_nz": { "name": "Aspect 16:9 NZ" },
-      "aspect_1_85": { "name": "Aspect 1.85" },
-      "aspect_2_35": { "name": "Aspect 2.35" },
-      "aspect_2_40": { "name": "Aspect 2.40" },
-      "auto_aspect_on": { "name": "Auto aspect on" },
-      "auto_aspect_off": { "name": "Auto aspect off" },
       "redetect_aspect": { "name": "Redetect aspect" },
-      "memory_a": { "name": "Memory A" },
-      "memory_b": { "name": "Memory B" },
-      "memory_c": { "name": "Memory C" },
-      "memory_d": { "name": "Memory D" },
       "hdr_setup": { "name": "HDR setup" },
       "test_pattern": { "name": "Test pattern" },
       "osd_on": { "name": "OSD on" },
@@ -115,7 +92,6 @@
       "query_status": { "name": "Query status" }
     },
     "select": {
-      "input_select": { "name": "Input" },
       "aspect_select": { "name": "Aspect ratio" },
       "memory_select": { "name": "Memory" },
       "sharpness_sensitivity": {
@@ -133,7 +109,8 @@
     },
     "switch": {
       "sharpness_enabled": { "name": "Sharpness" },
-      "game_mode": { "name": "Game mode" }
+      "game_mode": { "name": "Game mode" },
+      "auto_aspect": { "name": "Auto aspect detection" }
     },
     "number": {
       "sharpness_level": { "name": "Sharpness level" },
