@@ -22,9 +22,9 @@ Home Assistant              Lumagen Radiance Pro
 ESPHome integration ─── esphome://host:6053/?port_name=Lumagen&key=...
   │                              │
   ▼                              │
-esphome-lumagen firmware ── USB  │
+esphome-lumagen firmware         │
   │                              │
-  └──────── USB-C → USB-B ───────┘
+  └── UART → MAX3232 → RS-232 ───┘
 ```
 
 Direct RS-232 from the HA host's `/dev/tty*` also works — same dropdown, same flow.
