@@ -14,10 +14,19 @@ never reports as an active preset), the current input *is* reported via
 ``!I24`` / ``!I25``, so ``source`` reflects real device state rather than an
 optimistic guess.
 
-A compact signal-path summary (resolution in/out, refresh rates, HDR,
-colorspace) rides along as extra state attributes for an at-a-glance "what's
-playing" view on the media card. The authoritative per-field entities remain
-the individual sensors; these attributes are a convenience mirror.
+The Lumagen isn't "playing media" itself, but it *does* report live
+statistics about the signal passing through it. We surface that on the media
+card the way any player surfaces "now playing": the source->output signal
+path is mapped onto ``media_title`` (the card's bold primary line) and the
+HDR/colorspace summary onto ``app_name`` (which the frontend's
+``computeMediaDescription`` renders as the secondary line when
+``media_content_type`` is left unset). Both are gated on power so a stale
+signal path never lingers on the card when the device is in standby.
+
+The same fields also ride along as extra state attributes — that's the
+full, unformatted mirror shown in the more-info dialog. The authoritative
+per-field entities remain the individual sensors; the card fields and
+attributes here are a convenience view.
 """
 
 from __future__ import annotations
@@ -51,6 +60,37 @@ _INPUT_COUNT = 8
 def _fallback_label(number: int) -> str:
     """Default display name for input ``number`` when no configured label exists."""
     return f"Input {number}"
+
+
+def _fmt_rate(rate: str | None) -> str | None:
+    """Normalize a Lumagen vertical-rate string (``060``) to a bare Hz number.
+
+    Mirrors the sensor's parsing intent: strip the zero-padding but do not
+    divide by ten (the tenths-of-a-hertz firmware variant is rare — see
+    ``sensor._as_float``). Returns ``None`` for missing/unparseable input.
+    """
+    if not rate:
+        return None
+    try:
+        return str(int(rate))
+    except (TypeError, ValueError):
+        return rate
+
+
+def _format_signal(resolution: str | None, rate: str | None) -> str | None:
+    """Combine a resolution + refresh rate into one label, e.g. ``1080p60``.
+
+    Degrades gracefully: resolution alone -> ``1080p``; rate alone ->
+    ``60Hz``; neither -> ``None``.
+    """
+    rate_fmt = _fmt_rate(rate)
+    if resolution and rate_fmt:
+        return f"{resolution}{rate_fmt}"
+    if resolution:
+        return resolution
+    if rate_fmt:
+        return f"{rate_fmt}Hz"
+    return None
 
 
 async def async_setup_entry(
@@ -113,6 +153,34 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
             # than an out-of-list value the frontend would reject.
             return None
         return self._label_for(number)
+
+    # --- Card-facing "now playing" view -------------------------------------
+    # These map the live signal path onto the media card's own text lines so
+    # it shows on the card face, not just the more-info attributes. Gated on
+    # power: in standby we report nothing rather than a stale path. We
+    # deliberately leave media_content_type unset so the frontend's
+    # computeMediaDescription renders app_name as the secondary line.
+
+    @property
+    def media_title(self) -> str | None:
+        """Primary card line: the source -> output signal path."""
+        state = self.coordinator.data
+        if not state.power_on:
+            return None
+        source = _format_signal(state.source_resolution, state.source_vrate)
+        output = _format_signal(state.output_resolution, state.output_vrate)
+        if source and output:
+            return f"{source} → {output}"
+        return source or output
+
+    @property
+    def app_name(self) -> str | None:
+        """Secondary card line: dynamic range + colorspace, e.g. ``HDR · Rec.2020``."""
+        state = self.coordinator.data
+        if not state.power_on:
+            return None
+        parts = [value.value for value in (state.hdr_status, state.colorspace) if value is not None]
+        return " · ".join(parts) if parts else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

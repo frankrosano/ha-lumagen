@@ -48,9 +48,7 @@ def _media_player(state: LumagenState) -> tuple[LumagenMediaPlayer, MagicMock]:
         (None, None),  # unobserved -> unknown, never fabricated
     ],
 )
-def test_state_from_power(
-    power_on: bool | None, expected: MediaPlayerState | None
-) -> None:
+def test_state_from_power(power_on: bool | None, expected: MediaPlayerState | None) -> None:
     entity, _ = _media_player(LumagenState(power_on=power_on))
     assert entity.state == expected
 
@@ -70,9 +68,7 @@ def test_state_from_power(
         ("abc", None),  # unparseable
     ],
 )
-def test_source_from_current_input(
-    current_input: str | None, expected: str | None
-) -> None:
+def test_source_from_current_input(current_input: str | None, expected: str | None) -> None:
     entity, _ = _media_player(LumagenState(current_input=current_input))
     assert entity.source == expected
 
@@ -85,15 +81,19 @@ def test_source_list_falls_back_to_input_n_without_labels() -> None:
 def test_source_list_uses_configured_labels_with_fallback() -> None:
     entity, _ = _media_player(LumagenState(input_labels={1: "Apple TV", 3: "Roku"}))
     assert entity.source_list == [
-        "Apple TV", "Input 2", "Roku", "Input 4",
-        "Input 5", "Input 6", "Input 7", "Input 8",
+        "Apple TV",
+        "Input 2",
+        "Roku",
+        "Input 4",
+        "Input 5",
+        "Input 6",
+        "Input 7",
+        "Input 8",
     ]
 
 
 def test_source_uses_label_when_present() -> None:
-    entity, _ = _media_player(
-        LumagenState(current_input="03", input_labels={3: "Apple TV"})
-    )
+    entity, _ = _media_player(LumagenState(current_input="03", input_labels={3: "Apple TV"}))
     assert entity.source == "Apple TV"
 
 
@@ -172,3 +172,68 @@ def test_extra_state_attributes_none_when_unobserved() -> None:
         "hdr_status": None,
         "colorspace": None,
     }
+
+
+# ---------- card-facing now-playing fields ----------
+
+
+def test_media_title_signal_path() -> None:
+    """Both sides known -> a source -> output path with zero-padding stripped."""
+    entity, _ = _media_player(
+        LumagenState(
+            power_on=True,
+            source_resolution="1080p",
+            source_vrate="060",
+            output_resolution="2160p",
+            output_vrate="060",
+        )
+    )
+    assert entity.media_title == "1080p60 → 2160p60"
+
+
+def test_media_title_source_only() -> None:
+    """Output unknown -> just the source side, no arrow."""
+    entity, _ = _media_player(
+        LumagenState(power_on=True, source_resolution="1080p", source_vrate="024")
+    )
+    assert entity.media_title == "1080p24"
+
+
+def test_media_title_rate_only_gets_hz_suffix() -> None:
+    entity, _ = _media_player(LumagenState(power_on=True, output_vrate="060"))
+    assert entity.media_title == "60Hz"
+
+
+def test_media_title_none_when_off() -> None:
+    """Standby must not leave a stale signal path on the card."""
+    entity, _ = _media_player(
+        LumagenState(power_on=False, source_resolution="1080p", source_vrate="060")
+    )
+    assert entity.media_title is None
+
+
+def test_media_title_none_when_powered_on_but_no_signal() -> None:
+    entity, _ = _media_player(LumagenState(power_on=True))
+    assert entity.media_title is None
+
+
+def test_app_name_hdr_and_colorspace() -> None:
+    entity, _ = _media_player(
+        LumagenState(power_on=True, hdr_status=HdrStatus.HDR, colorspace=Colorspace.REC_2020)
+    )
+    assert entity.app_name == "HDR · Rec.2020"
+
+
+def test_app_name_colorspace_only() -> None:
+    entity, _ = _media_player(LumagenState(power_on=True, colorspace=Colorspace.REC_709))
+    assert entity.app_name == "Rec.709"
+
+
+def test_app_name_none_when_off() -> None:
+    entity, _ = _media_player(LumagenState(power_on=False, hdr_status=HdrStatus.HDR))
+    assert entity.app_name is None
+
+
+def test_app_name_none_when_no_metadata() -> None:
+    entity, _ = _media_player(LumagenState(power_on=True))
+    assert entity.app_name is None
