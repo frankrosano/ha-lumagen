@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.components.media_player import MediaPlayerState
-from pylumagen import Colorspace, HdrStatus, LumagenState
+from pylumagen import Colorspace, HdrStatus, LumagenState, SourceMode
 
 from custom_components.lumagen.media_player import LumagenMediaPlayer
 
@@ -178,25 +178,59 @@ def test_extra_state_attributes_none_when_unobserved() -> None:
 
 
 def test_media_title_signal_path() -> None:
-    """Both sides known -> a source -> output path with zero-padding stripped."""
+    """Scan letter comes from source_mode; zero-padding on the rate is stripped.
+
+    Resolution fields are the bare line count (``2160``); the ``p``/``i`` is a
+    separate field, so the letter is what keeps the digits from running
+    together (``216059`` -> ``2160p59``).
+    """
     entity, _ = _media_player(
         LumagenState(
             power_on=True,
-            source_resolution="1080p",
+            source_resolution="2160",
+            source_vrate="059",
+            source_mode=SourceMode.PROGRESSIVE,
+            output_resolution="2160",
+            output_vrate="059",
+        )
+    )
+    assert entity.media_title == "2160p59 → 2160p59"
+
+
+def test_media_title_interlaced_source_progressive_output() -> None:
+    """Source scan comes from source_mode; the output is always labeled progressive."""
+    entity, _ = _media_player(
+        LumagenState(
+            power_on=True,
+            source_resolution="1080",
             source_vrate="060",
-            output_resolution="2160p",
+            source_mode=SourceMode.INTERLACED,
+            output_resolution="2160",
             output_vrate="060",
         )
     )
-    assert entity.media_title == "1080p60 → 2160p60"
+    assert entity.media_title == "1080i60 → 2160p60"
 
 
 def test_media_title_source_only() -> None:
     """Output unknown -> just the source side, no arrow."""
     entity, _ = _media_player(
-        LumagenState(power_on=True, source_resolution="1080p", source_vrate="024")
+        LumagenState(
+            power_on=True,
+            source_resolution="1080",
+            source_vrate="024",
+            source_mode=SourceMode.PROGRESSIVE,
+        )
     )
     assert entity.media_title == "1080p24"
+
+
+def test_media_title_source_scan_unknown_omits_letter() -> None:
+    """Before source_mode is observed, no letter is inserted (digits run together)."""
+    entity, _ = _media_player(
+        LumagenState(power_on=True, source_resolution="2160", source_vrate="059")
+    )
+    assert entity.media_title == "216059"
 
 
 def test_media_title_rate_only_gets_hz_suffix() -> None:

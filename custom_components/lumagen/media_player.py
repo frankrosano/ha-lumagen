@@ -40,6 +40,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from pylumagen import SourceMode
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -77,17 +78,30 @@ def _fmt_rate(rate: str | None) -> str | None:
         return rate
 
 
-def _format_signal(resolution: str | None, rate: str | None) -> str | None:
-    """Combine a resolution + refresh rate into one label, e.g. ``1080p60``.
+def _scan_letter(mode: SourceMode | None) -> str | None:
+    """The ``p``/``i`` scan letter for a resolution label, or ``None``.
 
-    Degrades gracefully: resolution alone -> ``1080p``; rate alone ->
-    ``60Hz``; neither -> ``None``.
+    The Lumagen's resolution fields carry only the line count (``2160``); the
+    scan type is a separate field. Only interlaced/progressive contribute a
+    letter — the "no input" sentinels (``-``/``n``) don't.
+    """
+    if mode in (SourceMode.PROGRESSIVE, SourceMode.INTERLACED):
+        return mode.value  # the enum value *is* the wire letter ("p" / "i")
+    return None
+
+
+def _format_signal(
+    resolution: str | None, rate: str | None, scan: str | None = None
+) -> str | None:
+    """Combine resolution + scan + refresh rate into one label, e.g. ``2160p59``.
+
+    Without the scan letter the digits would run together (``216059``); the
+    letter is what separates them. Degrades gracefully: resolution alone ->
+    ``2160``; rate alone -> ``60Hz``; neither -> ``None``.
     """
     rate_fmt = _fmt_rate(rate)
-    if resolution and rate_fmt:
-        return f"{resolution}{rate_fmt}"
     if resolution:
-        return resolution
+        return f"{resolution}{scan or ''}{rate_fmt or ''}"
     if rate_fmt:
         return f"{rate_fmt}Hz"
     return None
@@ -167,8 +181,12 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         state = self.coordinator.data
         if not state.power_on:
             return None
-        source = _format_signal(state.source_resolution, state.source_vrate)
-        output = _format_signal(state.output_resolution, state.output_vrate)
+        source = _format_signal(
+            state.source_resolution, state.source_vrate, _scan_letter(state.source_mode)
+        )
+        # The Radiance Pro deinterlaces and outputs progressive; there is no
+        # reported output scan-mode field, so label the output "p".
+        output = _format_signal(state.output_resolution, state.output_vrate, "p")
         if source and output:
             return f"{source} → {output}"
         return source or output
