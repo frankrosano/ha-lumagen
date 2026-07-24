@@ -31,6 +31,7 @@ attributes here are a convenience view.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 from homeassistant.components.media_player import (
@@ -141,17 +142,35 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         # card and maps directly to the % / $ commands.
         return MediaPlayerState.ON if power_on else MediaPlayerState.OFF
 
-    def _label_for(self, number: int) -> str:
-        """Configured label for input ``number``, or the ``Input N`` fallback.
+    def _source_map(self) -> dict[str, int]:
+        """Ordered ``{display label: input number}`` with unique labels.
 
-        An empty configured label (user cleared it) is treated as "no label"
-        so the source never renders blank.
+        Source selection round-trips through the label string: the dropdown
+        shows a label and HA hands that same string back to
+        :meth:`async_select_source`, which must resolve it to an input
+        number. That only works if every label is unique.
+
+        The Lumagen doesn't guarantee uniqueness — inputs can share a
+        configured label, or all still carry a generic default (we've seen a
+        device report every input simply as "Input", with no number). Empty
+        or duplicated labels are therefore replaced with the numbered
+        ``Input N`` fallback, which is both unique and clearer; a distinct,
+        non-empty custom label is shown as-is. Built fresh on each read so a
+        relabel shows up without recreating the entity.
         """
-        return self.coordinator.data.input_labels.get(number) or _fallback_label(number)
+        labels = self.coordinator.data.input_labels
+        raw = {n: (labels.get(n) or "").strip() for n in range(1, _INPUT_COUNT + 1)}
+        counts = Counter(label for label in raw.values() if label)
+        mapping: dict[str, int] = {}
+        for n in range(1, _INPUT_COUNT + 1):
+            label = raw[n]
+            display = label if label and counts[label] == 1 else _fallback_label(n)
+            mapping[display] = n
+        return mapping
 
     @property
     def source_list(self) -> list[str]:
-        return [self._label_for(n) for n in range(1, _INPUT_COUNT + 1)]
+        return list(self._source_map())
 
     @property
     def source(self) -> str | None:
@@ -166,7 +185,10 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
             # Inputs outside the surfaced range show as no selection rather
             # than an out-of-list value the frontend would reject.
             return None
-        return self._label_for(number)
+        for display, n in self._source_map().items():
+            if n == number:
+                return display
+        return None
 
     # --- Card-facing "now playing" view -------------------------------------
     # These map the live signal path onto the media card's own text lines so
@@ -219,11 +241,9 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         await self.coordinator.client.standby()
 
     async def async_select_source(self, source: str) -> None:
-        # Resolve against the same _label_for used to build source_list, so a
-        # configured label and its "Input N" fallback both match. First match
-        # wins if two inputs happen to share a label.
-        for number in range(1, _INPUT_COUNT + 1):
-            if self._label_for(number) == source:
-                await self.coordinator.client.set_input(number)
-                return
+        # Resolve against the same unique mapping used to build source_list,
+        # so the picked label maps to exactly one input.
+        number = self._source_map().get(source)
+        if number is not None:
+            await self.coordinator.client.set_input(number)
         # Unknown source label — no-op.

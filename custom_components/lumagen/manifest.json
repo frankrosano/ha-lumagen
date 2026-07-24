@@ -1,7 +1,7 @@
 {
   "domain": "lumagen",
   "name": "Lumagen Radiance Pro",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "after_dependencies": ["esphome"],
   "codeowners": ["@frankrosano"],
   "config_flow": true,
