@@ -5,13 +5,17 @@
   and ``sensitivity`` values. Defaults to ``enabled=False, sensitivity="N"``
   if those haven't been observed yet (the slider on its own doesn't
   imply sharpening should be on).
-* **Minimum fan speed** (1-10) — write-only, and unavoidably so: there is
-  no fan-speed query in either the Lumagen RS-232 doc or the firmware
-  strings, so the slider tracks the last value we sent rather than the
-  device's authoritative state. It reads "unknown" until first set, and a
-  change made on the device itself can't be seen. The range is in the
-  device's own units (what its menu displays); pylumagen converts to the
-  0-based wire value.
+* **Minimum fan speed** (1-10) — write-only, and unavoidably so. No
+  fan-speed query exists: it's absent from the Lumagen RS-232 doc and the
+  firmware-strings command table, and probing the plausible undocumented
+  slots (``ZQI55``-``ZQI57``, ``ZQS05``-``ZQS07``) returned empty payloads,
+  which on this firmware is indistinguishable from a nonexistent code.
+  So the slider tracks the last value we sent: it reads "unknown" until
+  first set, and a change made on the device itself can't be seen. We
+  deliberately don't seed a fake starting value — that would claim to
+  report device state we don't have. The range is in the device's own
+  units (what its menu displays); pylumagen converts to the 0-based wire
+  value.
 """
 
 from __future__ import annotations
