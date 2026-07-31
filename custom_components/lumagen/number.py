@@ -5,10 +5,13 @@
   and ``sensitivity`` values. Defaults to ``enabled=False, sensitivity="N"``
   if those haven't been observed yet (the slider on its own doesn't
   imply sharpening should be on).
-* **Fan speed** (0-9) — write-only. The Lumagen has no documented query
-  for fan speed, so the slider tracks the last value we sent rather
-  than the device's authoritative state. Optimistic UX: user sets 3,
-  slider stays at 3, even though we can't independently verify.
+* **Minimum fan speed** (1-10) — write-only, and unavoidably so: there is
+  no fan-speed query in either the Lumagen RS-232 doc or the firmware
+  strings, so the slider tracks the last value we sent rather than the
+  device's authoritative state. It reads "unknown" until first set, and a
+  change made on the device itself can't be seen. The range is in the
+  device's own units (what its menu displays); pylumagen converts to the
+  0-based wire value.
 """
 
 from __future__ import annotations
@@ -70,8 +73,11 @@ NUMBERS: tuple[LumagenNumberDescription, ...] = (
     LumagenNumberDescription(
         key="fan_speed",
         translation_key="fan_speed",
-        native_min_value=0,
-        native_max_value=9,
+        # 1-10 to match the number the Lumagen shows in its own menu. The
+        # wire value is one lower; pylumagen's fan_speed_command owns that
+        # conversion, so this range is in device units.
+        native_min_value=1,
+        native_max_value=10,
         native_step=1,
         mode=NumberMode.SLIDER,
         entity_category=EntityCategory.CONFIG,

@@ -219,7 +219,22 @@ async def test_number_set_fan_speed_dispatches_to_client() -> None:
     client = MagicMock()
     client.set_fan_speed = AsyncMock()
     await _set_fan_speed(client, LumagenState(), 4)
+    # Passed through in device units — pylumagen owns the wire conversion,
+    # so the integration must NOT pre-adjust the value here.
     client.set_fan_speed.assert_awaited_once_with(4)
+
+
+def test_fan_speed_slider_matches_device_menu_range() -> None:
+    """1-10, matching what the Lumagen displays.
+
+    Regression: the slider was 0-9 (the raw wire range), so every value the
+    user picked showed up one higher on the device.
+    """
+    from custom_components.lumagen.number import NUMBERS
+
+    description = next(d for d in NUMBERS if d.key == "fan_speed")
+    assert description.native_min_value == 1
+    assert description.native_max_value == 10
 
 
 # ---------- Select wiring ----------
