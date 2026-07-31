@@ -46,7 +46,6 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
     LumagenButtonDescription(key="menu", translation_key="menu", press_fn=_cmd("M")),
     LumagenButtonDescription(key="exit", translation_key="exit", press_fn=_cmd("X")),
     LumagenButtonDescription(key="ok", translation_key="ok", press_fn=_cmd("k")),
-    LumagenButtonDescription(key="menu_off", translation_key="menu_off", press_fn=_cmd("!")),
     LumagenButtonDescription(key="up", translation_key="up", press_fn=_cmd("^")),
     LumagenButtonDescription(key="down", translation_key="down", press_fn=_cmd("v")),
     LumagenButtonDescription(key="left", translation_key="left", press_fn=_cmd("<")),
@@ -65,7 +64,11 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
     ),
 
     # --- Misc ---
-    LumagenButtonDescription(key="hdr_setup", translation_key="hdr_setup", press_fn=_cmd("Y")),
+    # No "Menu off" (`!`) or "HDR setup" (`Y`) buttons: on this hardware they
+    # duplicate Exit (`X`) and Left (`<`) respectively, so they were two extra
+    # entities for no extra capability. The raw commands remain reachable via
+    # the send_raw_command service, and pylumagen still exposes them as
+    # Navigation.MENU_OFF / Misc.HDR_SETUP.
     LumagenButtonDescription(key="test_pattern", translation_key="test_pattern",
                              press_fn=_cmd("H")),
     LumagenButtonDescription(key="osd_on", translation_key="osd_on", press_fn=_cmd("g")),

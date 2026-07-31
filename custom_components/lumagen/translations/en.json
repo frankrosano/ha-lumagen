@@ -139,9 +139,6 @@
       "ok": {
         "name": "OK"
       },
-      "menu_off": {
-        "name": "Menu off"
-      },
       "up": {
         "name": "Up"
       },
@@ -156,9 +153,6 @@
       },
       "redetect_aspect": {
         "name": "Redetect aspect"
-      },
-      "hdr_setup": {
-        "name": "HDR setup"
       },
       "test_pattern": {
         "name": "Test pattern"
