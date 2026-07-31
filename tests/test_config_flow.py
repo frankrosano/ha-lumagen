@@ -15,8 +15,9 @@ from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pylumagen import LumagenConnectionError, LumagenState
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.lumagen.const import CONF_URL, DOMAIN
+from custom_components.lumagen.const import CONF_POLL_INTERVAL, CONF_URL, DOMAIN
 
 FAKE_URL = "esphome://10.0.0.42:6053/?port_name=Lumagen&key=abc"
 # Both the config flow validator and __init__ fetch the client via this
@@ -176,3 +177,54 @@ async def test_already_configured_aborts(hass: HomeAssistant) -> None:
         )
     assert second_result["type"] is FlowResultType.ABORT
     assert second_result["reason"] == "already_configured"
+
+
+# ---------- Options flow: poll interval ----------
+
+
+async def test_options_flow_defaults_to_60_and_saves(hass: HomeAssistant) -> None:
+    """The options flow round-trips the poll interval into entry.options."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_URL: "socket://10.0.0.5:5000"},
+        unique_id="opts-test",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "init"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={CONF_POLL_INTERVAL: 15}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    # Stored as an int — the NumberSelector hands back a float.
+    assert entry.options == {CONF_POLL_INTERVAL: 15}
+    assert isinstance(entry.options[CONF_POLL_INTERVAL], int)
+
+
+def test_stale_timeout_scales_with_poll_interval() -> None:
+    """pylumagen rejects stale_timeout <= poll interval; ours must always clear it."""
+    from custom_components.lumagen.coordinator import _stale_timeout_for
+
+    # Default keeps the library's historical 90s exactly.
+    assert _stale_timeout_for(60) == 90.0
+    # Short and long intervals both stay strictly above the interval.
+    for interval in (5, 10, 15, 30, 60, 120, 300, 600):
+        assert _stale_timeout_for(interval) > interval
+
+
+async def test_client_constructs_at_every_selectable_interval() -> None:
+    """Guard the ValueError in LumagenClient for the whole options range.
+
+    The library raises if stale_timeout <= the longest poll interval, so a
+    badly-derived timeout would only blow up at runtime for the user who
+    picked that value. Walk the selectable range instead.
+    """
+    from custom_components.lumagen.const import MAX_POLL_INTERVAL, MIN_POLL_INTERVAL
+    from custom_components.lumagen.coordinator import create_lumagen_client
+
+    for interval in (MIN_POLL_INTERVAL, 15, 60, MAX_POLL_INTERVAL):
+        client = await create_lumagen_client("socket://127.0.0.1:1", interval)
+        assert client is not None

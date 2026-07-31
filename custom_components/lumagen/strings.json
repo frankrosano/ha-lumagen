@@ -20,6 +20,20 @@
       "already_configured": "This Lumagen is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lumagen options",
+        "description": "Most state (input, resolution, HDR, colorspace, power) is reported by the Lumagen the moment it changes, and is unaffected by this setting. A few settings are never reported and can only be read by asking for them: sharpness, game mode, auto aspect detection, Rec.2020 display support and HDR source metadata. When you change one of those with the Lumagen's own remote, it can take up to one polling interval to show up here. Lower the interval for a snappier response, at the cost of more traffic on the 9600-baud serial link.",
+        "data": {
+          "poll_interval": "Polling interval"
+        },
+        "data_description": {
+          "poll_interval": "Seconds between status polls. Default is 60."
+        }
+      }
+    }
+  },
   "entity": {
     "binary_sensor": {
       "power": { "name": "Power" },

@@ -22,8 +22,17 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.components import usb
 from homeassistant.components.usb import SerialDevice, USBDevice
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -32,7 +41,15 @@ from homeassistant.helpers.selector import (
 from pylumagen import LumagenConnectionError, LumagenError
 
 from . import coordinator as _coordinator
-from .const import CONF_URL, DOMAIN, VALIDATION_TIMEOUT
+from .const import (
+    CONF_POLL_INTERVAL,
+    CONF_URL,
+    DEFAULT_POLL_INTERVAL,
+    DOMAIN,
+    MAX_POLL_INTERVAL,
+    MIN_POLL_INTERVAL,
+    VALIDATION_TIMEOUT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +59,12 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     MINOR_VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Expose the poll-interval options flow."""
+        return LumagenOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -80,6 +103,44 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=schema, errors=errors
         )
+
+
+class LumagenOptionsFlow(OptionsFlow):
+    """Tune how often the integration polls the Lumagen.
+
+    Only the fields the Lumagen never pushes (sharpness, game mode, auto
+    aspect, display Rec.2020, source HDR metadata) are affected by this —
+    everything in the Full v5 report still arrives in real time regardless.
+
+    Saving reloads the config entry, because the interval is baked into the
+    ``LumagenClient`` at construction time.
+    """
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                data={CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL])}
+            )
+
+        current = self.config_entry.options.get(
+            CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
+        )
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_POLL_INTERVAL, default=current): NumberSelector(
+                    NumberSelectorConfig(
+                        min=MIN_POLL_INTERVAL,
+                        max=MAX_POLL_INTERVAL,
+                        step=5,
+                        unit_of_measurement="s",
+                        mode=NumberSelectorMode.BOX,
+                    )
+                )
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)
 
 
 def _unique_id_for(url: str) -> str:

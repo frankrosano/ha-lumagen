@@ -24,7 +24,7 @@ from pylumagen import (
     LumagenTransport,
 )
 
-from .const import DOMAIN
+from .const import DEFAULT_POLL_INTERVAL, DOMAIN
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -208,7 +208,30 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         self.async_set_updated_data(state)
 
 
-async def create_lumagen_client(url: str) -> LumagenClient:
+def _stale_timeout_for(poll_interval: float) -> float:
+    """Pick a staleness timeout that can't false-positive at this poll rate.
+
+    pylumagen requires ``stale_timeout`` to exceed the longest poll interval
+    — it checks staleness right after sending a query, before the reply can
+    arrive, so a timeout shorter than one cycle would trip a reconnect every
+    cycle (it raises ValueError rather than let that happen).
+
+    Scale with the interval and keep an absolute floor of 30s of slack for
+    transient network delay. At the 60s default this yields exactly the 90s
+    the library defaults to, so tuning the interval is the only behavior
+    change.
+    """
+    return max(poll_interval * 1.5, poll_interval + 30.0)
+
+
+async def create_lumagen_client(
+    url: str, poll_interval: float = DEFAULT_POLL_INTERVAL
+) -> LumagenClient:
     """Factory used by both config-flow validation and entry setup."""
     transport = LumagenTransport(url)
-    return LumagenClient(transport)
+    return LumagenClient(
+        transport,
+        power_poll_interval=poll_interval,
+        status_poll_interval=poll_interval,
+        stale_timeout=_stale_timeout_for(poll_interval),
+    )

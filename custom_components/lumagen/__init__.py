@@ -13,7 +13,9 @@ from . import coordinator as _coordinator
 from .const import (
     ATTR_COMMAND,
     ATTR_CR,
+    CONF_POLL_INTERVAL,
     CONF_URL,
+    DEFAULT_POLL_INTERVAL,
     DOMAIN,
     PLATFORMS,
     SERVICE_SEND_RAW_COMMAND,
@@ -33,13 +35,26 @@ _SEND_RAW_COMMAND_SCHEMA = vol.Schema(
 
 async def async_setup_entry(hass: HomeAssistant, entry: LumagenConfigEntry) -> bool:
     """Set up a Lumagen from a config entry."""
-    client = await _coordinator.create_lumagen_client(entry.data[CONF_URL])
+    poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+    client = await _coordinator.create_lumagen_client(
+        entry.data[CONF_URL], poll_interval=poll_interval
+    )
     lumagen_coordinator = LumagenCoordinator(hass, entry, client)
     await lumagen_coordinator.async_config_entry_first_refresh()
     entry.runtime_data = lumagen_coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_register_services(hass)
+    # The poll interval is baked into the client at construction, so a change
+    # to it only takes effect on reload.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
+
+async def _async_options_updated(
+    hass: HomeAssistant, entry: LumagenConfigEntry
+) -> None:
+    """Reload the entry so a new poll interval takes effect."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LumagenConfigEntry) -> bool:

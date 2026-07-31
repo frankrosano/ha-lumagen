@@ -20,24 +20,66 @@
       "already_configured": "This Lumagen is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lumagen options",
+        "description": "Most state (input, resolution, HDR, colorspace, power) is reported by the Lumagen the moment it changes, and is unaffected by this setting. A few settings are never reported and can only be read by asking for them: sharpness, game mode, auto aspect detection, Rec.2020 display support and HDR source metadata. When you change one of those with the Lumagen's own remote, it can take up to one polling interval to show up here. Lower the interval for a snappier response, at the cost of more traffic on the 9600-baud serial link.",
+        "data": {
+          "poll_interval": "Polling interval"
+        },
+        "data_description": {
+          "poll_interval": "Seconds between status polls. Default is 60."
+        }
+      }
+    }
+  },
   "entity": {
     "binary_sensor": {
-      "power": { "name": "Power" },
-      "is_hdr": { "name": "HDR active" },
-      "display_supports_rec2020": { "name": "Display supports Rec.2020" },
-      "serial_connected": { "name": "Serial connected" }
+      "power": {
+        "name": "Power"
+      },
+      "is_hdr": {
+        "name": "HDR active"
+      },
+      "display_supports_rec2020": {
+        "name": "Display supports Rec.2020"
+      },
+      "serial_connected": {
+        "name": "Serial connected"
+      }
     },
     "sensor": {
-      "model": { "name": "Model" },
-      "firmware": { "name": "Firmware" },
-      "current_input": { "name": "Current input" },
-      "input_memory": { "name": "Input memory" },
-      "source_resolution": { "name": "Source resolution" },
-      "source_vrate": { "name": "Source refresh rate" },
-      "source_aspect": { "name": "Source aspect" },
-      "content_aspect": { "name": "Content aspect" },
-      "output_resolution": { "name": "Output resolution" },
-      "output_vrate": { "name": "Output refresh rate" },
+      "model": {
+        "name": "Model"
+      },
+      "firmware": {
+        "name": "Firmware"
+      },
+      "current_input": {
+        "name": "Current input"
+      },
+      "input_memory": {
+        "name": "Input memory"
+      },
+      "source_resolution": {
+        "name": "Source resolution"
+      },
+      "source_vrate": {
+        "name": "Source refresh rate"
+      },
+      "source_aspect": {
+        "name": "Source aspect"
+      },
+      "content_aspect": {
+        "name": "Content aspect"
+      },
+      "output_resolution": {
+        "name": "Output resolution"
+      },
+      "output_vrate": {
+        "name": "Output refresh rate"
+      },
       "colorspace": {
         "name": "Colorspace",
         "state": {
@@ -49,7 +91,10 @@
       },
       "hdr_status": {
         "name": "HDR status",
-        "state": { "SDR": "SDR", "HDR": "HDR" }
+        "state": {
+          "SDR": "SDR",
+          "HDR": "HDR"
+        }
       },
       "input_status": {
         "name": "Input status",
@@ -68,54 +113,121 @@
           "n": "No input"
         }
       },
-      "hdr_source_max_luminance": { "name": "HDR source max luminance" },
-      "hdr_source_min_luminance": { "name": "HDR source min luminance" },
-      "hdr_source_max_cll": { "name": "HDR source MaxCLL" }
+      "hdr_source_max_luminance": {
+        "name": "HDR source max luminance"
+      },
+      "hdr_source_min_luminance": {
+        "name": "HDR source min luminance"
+      },
+      "hdr_source_max_cll": {
+        "name": "HDR source MaxCLL"
+      }
     },
     "button": {
-      "power_on": { "name": "Power on" },
-      "standby": { "name": "Standby" },
-      "menu": { "name": "Menu" },
-      "exit": { "name": "Exit" },
-      "ok": { "name": "OK" },
-      "menu_off": { "name": "Menu off" },
-      "up": { "name": "Up" },
-      "down": { "name": "Down" },
-      "left": { "name": "Left" },
-      "right": { "name": "Right" },
-      "redetect_aspect": { "name": "Redetect aspect" },
-      "hdr_setup": { "name": "HDR setup" },
-      "test_pattern": { "name": "Test pattern" },
-      "osd_on": { "name": "OSD on" },
-      "osd_off": { "name": "OSD off" },
-      "save": { "name": "Save to NVRAM" },
-      "query_status": { "name": "Query status" }
+      "power_on": {
+        "name": "Power on"
+      },
+      "standby": {
+        "name": "Standby"
+      },
+      "menu": {
+        "name": "Menu"
+      },
+      "exit": {
+        "name": "Exit"
+      },
+      "ok": {
+        "name": "OK"
+      },
+      "menu_off": {
+        "name": "Menu off"
+      },
+      "up": {
+        "name": "Up"
+      },
+      "down": {
+        "name": "Down"
+      },
+      "left": {
+        "name": "Left"
+      },
+      "right": {
+        "name": "Right"
+      },
+      "redetect_aspect": {
+        "name": "Redetect aspect"
+      },
+      "hdr_setup": {
+        "name": "HDR setup"
+      },
+      "test_pattern": {
+        "name": "Test pattern"
+      },
+      "osd_on": {
+        "name": "OSD on"
+      },
+      "osd_off": {
+        "name": "OSD off"
+      },
+      "save": {
+        "name": "Save to NVRAM"
+      },
+      "query_status": {
+        "name": "Query status"
+      }
     },
     "select": {
-      "aspect_select": { "name": "Aspect ratio" },
-      "memory_select": { "name": "Memory" },
+      "aspect_select": {
+        "name": "Aspect ratio"
+      },
+      "memory_select": {
+        "name": "Memory"
+      },
       "sharpness_sensitivity": {
         "name": "Sharpness sensitivity",
-        "state": { "Normal": "Normal", "High": "High" }
+        "state": {
+          "Normal": "Normal",
+          "High": "High"
+        }
       },
       "subtitle_shift": {
         "name": "Subtitle shift",
-        "state": { "Off": "Off", "Small": "Small", "Large": "Large" }
+        "state": {
+          "Off": "Off",
+          "Small": "Small",
+          "Large": "Large"
+        }
       },
       "hdr_gamma_mode": {
         "name": "HDR gamma mode",
-        "state": { "Auto": "Auto", "HDR": "HDR", "SDR": "SDR" }
+        "state": {
+          "Auto": "Auto",
+          "HDR": "HDR",
+          "SDR": "SDR"
+        }
       }
     },
     "switch": {
-      "sharpness_enabled": { "name": "Sharpness" },
-      "game_mode": { "name": "Game mode" },
-      "auto_aspect": { "name": "Auto aspect detection" }
+      "sharpness_enabled": {
+        "name": "Sharpness"
+      },
+      "game_mode": {
+        "name": "Game mode"
+      },
+      "auto_aspect": {
+        "name": "Auto aspect detection"
+      }
     },
     "number": {
-      "sharpness_level": { "name": "Sharpness level" },
-      "fan_speed": { "name": "Minimum fan speed" },
-      "hdr_mapping_max_nits": { "name": "HDR mapping max nits" }
+      "sharpness_level": {
+        "name": "Sharpness level"
+      },
+      "fan_speed": {
+        "name": "Minimum fan speed"
+      },
+      "hdr_mapping_max_nits": {
+        "name": "HDR mapping max nits"
+      }
     }
   },
   "services": {

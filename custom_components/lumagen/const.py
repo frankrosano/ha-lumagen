@@ -11,6 +11,21 @@ MANUFACTURER: Final = "Lumagen, Inc."
 
 CONF_URL: Final = "url"
 
+# How often pylumagen polls the device, in seconds. Most state arrives via
+# the Lumagen's Full v5 push (`!I25`) in real time, but a handful of fields
+# — sharpness, game mode, auto aspect, display Rec.2020 and source HDR
+# metadata — are never pushed; the device only answers explicit queries for
+# them. Those fields therefore lag by up to one poll interval when changed
+# from the front-panel remote, which is why this is worth tuning.
+#
+# Lower = snappier, at the cost of more traffic on a 9600-baud link. The
+# floor of 5s keeps a poll cycle comfortably shorter than the round trip
+# for the five secondary queries plus their replies.
+CONF_POLL_INTERVAL: Final = "poll_interval"
+DEFAULT_POLL_INTERVAL: Final = 60
+MIN_POLL_INTERVAL: Final = 5
+MAX_POLL_INTERVAL: Final = 600
+
 # Service for power-user / advanced workflows: send any RS-232 string at the
 # Lumagen and let the protocol parser feed unsolicited responses back into
 # state. Useful for commands the integration doesn't expose as entities
