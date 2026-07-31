@@ -242,6 +242,10 @@
         "cr": {
           "name": "Add CR terminator",
           "description": "Append a carriage return. Most ZY-prefixed commands need this."
+        },
+        "device_id": {
+          "name": "Lumagen",
+          "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
         }
       }
     }

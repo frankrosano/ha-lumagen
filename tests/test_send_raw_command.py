@@ -105,6 +105,80 @@ async def test_service_defaults_cr_false(hass: HomeAssistant) -> None:
     assert matching_calls[0].kwargs.get("cr") is False
 
 
+async def test_service_accepts_a_device_target(hass: HomeAssistant) -> None:
+    """A call carrying device_id must validate and route.
+
+    Regression: services.yaml declared a mandatory entity target while the
+    handler's schema permitted only command + cr. The UI therefore demanded
+    a target that the schema would have rejected, making the service
+    uncallable from Developer Tools either way.
+    """
+    from homeassistant.helpers import device_registry as dr
+
+    client = _make_client_mock()
+    await _setup_entry(hass, client)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+
+    dev_reg = dr.async_get(hass)
+    device = dev_reg.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "target-test")},
+        name="Lumagen",
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SEND_RAW_COMMAND,
+        {ATTR_COMMAND: "ZQI55", "device_id": device.id},
+        blocking=True,
+    )
+
+    assert [c for c in client.send_command.await_args_list if c.args == ("ZQI55",)]
+
+
+async def test_service_accepts_an_entity_target(hass: HomeAssistant) -> None:
+    """An entity target must validate and still reach the client.
+
+    Back-compat: the old services.yaml declared an entity target, so an
+    automation built against it may still pass entity_id. With a single
+    configured Lumagen both the resolved-device path and the no-target
+    fallback land on the same entry, so what this pins is that the schema
+    accepts the key at all rather than rejecting the call outright.
+    """
+    client = _make_client_mock()
+    await _setup_entry(hass, client)
+
+    # Any entity this integration created will do.
+    entity_id = next(
+        state.entity_id
+        for state in hass.states.async_all()
+        if state.entity_id.endswith("_power_on") or ".lumagen" in state.entity_id
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SEND_RAW_COMMAND,
+        {ATTR_COMMAND: "ZQI56", "entity_id": entity_id},
+        blocking=True,
+    )
+
+    assert [c for c in client.send_command.await_args_list if c.args == ("ZQI56",)]
+
+
+async def test_service_rejects_unknown_device_target(hass: HomeAssistant) -> None:
+    """A target that matches no loaded Lumagen must fail loudly."""
+    client = _make_client_mock()
+    await _setup_entry(hass, client)
+
+    with pytest.raises(ServiceValidationError, match="None of the targeted devices"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SEND_RAW_COMMAND,
+            {ATTR_COMMAND: "ZQS00", "device_id": "does-not-exist"},
+            blocking=True,
+        )
+
+
 async def test_service_rejects_empty_command(hass: HomeAssistant) -> None:
     client = _make_client_mock()
     await _setup_entry(hass, client)

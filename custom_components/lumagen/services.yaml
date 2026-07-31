@@ -7,10 +7,10 @@ send_raw_command:
     calibration. Refer to Tip0011_RS232CommandInterface for the full
     command vocabulary. Responses (if any) are parsed by pylumagen and
     update the relevant state fields automatically.
-  target:
-    entity:
-      integration: lumagen
-      domain: button
+  # Deliberately no `target:` block. A target declared there is mandatory in
+  # the UI, which made this service impossible to call for the normal
+  # single-Lumagen case. Routing is offered below as an optional field
+  # instead.
   fields:
     command:
       name: Command
@@ -33,3 +33,13 @@ send_raw_command:
       default: false
       selector:
         boolean:
+    device_id:
+      name: Lumagen
+      description: >
+        Which Lumagen to send the command to. Only needed if you have more
+        than one configured — leave this empty and the command goes to your
+        only Lumagen.
+      required: false
+      selector:
+        device:
+          integration: lumagen

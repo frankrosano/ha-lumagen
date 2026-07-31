@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 import voluptuous as vol
+from homeassistant.const import ATTR_AREA_ID, ATTR_DEVICE_ID, ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -29,6 +30,13 @@ _SEND_RAW_COMMAND_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_COMMAND): vol.All(cv.string, vol.Length(min=1, max=64)),
         vol.Optional(ATTR_CR, default=False): cv.boolean,
+        # Optional routing for the rare multi-Lumagen setup. These must be
+        # declared even though they're optional: a plain vol.Schema rejects
+        # undeclared keys, so without them any call carrying a target would
+        # fail validation before reaching the handler.
+        vol.Optional(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_ENTITY_ID): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(ATTR_AREA_ID): vol.All(cv.ensure_list, [cv.string]),
     }
 )
 
@@ -118,16 +126,33 @@ def _resolve_target_entry(
 ) -> LumagenConfigEntry:
     """Pick the config entry the service call should route to.
 
-    Honors ``device_id`` targets via the device registry. Falls back to
-    the first loaded entry when no target is given (the common single-
-    Lumagen case). Raises if a target is given that doesn't match any
-    loaded Lumagen entry, so misrouted automations fail loudly.
+    Targeting is optional — with a single Lumagen (the overwhelmingly
+    common case) the call needs no target at all and lands on the only
+    loaded entry. ``device_id`` and ``entity_id`` are both honored for
+    multi-Lumagen setups; an entity is resolved to its device first.
+
+    Raises if a device/entity target is given that doesn't match any
+    loaded Lumagen entry, so a misrouted automation fails loudly instead
+    of quietly commanding the wrong unit. An ``area_id``-only target
+    isn't resolved (there's no sensible per-area routing for a single
+    piece of AV gear) and falls back to the first loaded entry.
     """
-    device_ids: list[str] = call.data.get("device_id", []) or []
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+
+    device_ids: list[str] = list(call.data.get(ATTR_DEVICE_ID) or [])
+    entity_ids: list[str] = list(call.data.get(ATTR_ENTITY_ID) or [])
+
+    # Resolve any entity targets to their owning device.
+    if entity_ids:
+        ent_reg = er.async_get(hass)
+        for entity_id in entity_ids:
+            entity = ent_reg.async_get(entity_id)
+            if entity is not None and entity.device_id is not None:
+                device_ids.append(entity.device_id)
+
     if not device_ids:
         return loaded_entries[0]
-
-    from homeassistant.helpers import device_registry as dr
 
     dev_reg = dr.async_get(hass)
     for device_id in device_ids:
