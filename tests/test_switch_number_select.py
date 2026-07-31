@@ -15,52 +15,120 @@ import pytest
 from pylumagen import LumagenState
 from pylumagen.state import SharpnessSensitivity
 
-from custom_components.lumagen.number import (
-    _set_fan_speed,
-    _set_sharpness_level,
-)
+from custom_components.lumagen.coordinator import LumagenCoordinator
+from custom_components.lumagen.number import _set_fan_speed
 from custom_components.lumagen.select import (
     _closest_aspect_label,
     _current_sharpness_sensitivity,
-    _select_sharpness_sensitivity,
     _select_subtitle_shift,
 )
-from custom_components.lumagen.switch import (
-    _set_game_mode,
-    _set_sharpness_enabled,
-)
+from custom_components.lumagen.switch import _set_game_mode
 
-# ---------- Switch wiring ----------
+# ---------- Sharpness compound write (centralized on the coordinator) ----------
+#
+# ZY521 sends enabled + level + sensitivity together, so changing one field
+# has to re-send the other two. That merge lives on the coordinator so all
+# three entities share one source of truth; these tests exercise it directly.
 
 
-async def test_switch_set_sharpness_enabled_preserves_other_components() -> None:
-    """Toggling enabled must keep the existing level + sensitivity values."""
+def _sharpness_coordinator(state: LumagenState | None = None) -> LumagenCoordinator:
+    """Build a coordinator with just the fields the sharpness path touches."""
+    coord = LumagenCoordinator.__new__(LumagenCoordinator)
     client = MagicMock()
     client.set_sharpness = AsyncMock()
-    state = LumagenState(
-        sharpness_enabled=False,
-        sharpness_level=5,
-        sharpness_sensitivity=SharpnessSensitivity.HIGH,
+    coord.client = client
+    coord.data = state if state is not None else LumagenState()
+    coord._last_sharpness_enabled = None
+    coord._last_sharpness_level = None
+    coord._last_sharpness_sensitivity = None
+    return coord
+
+
+async def test_set_sharpness_level_preserves_enabled_and_sensitivity() -> None:
+    coord = _sharpness_coordinator(
+        LumagenState(
+            sharpness_enabled=True,
+            sharpness_level=2,
+            sharpness_sensitivity=SharpnessSensitivity.HIGH,
+        )
+    )
+    await coord.async_set_sharpness(level=7)
+    coord.client.set_sharpness.assert_awaited_once_with(
+        enabled=True, level=7, sensitivity="H"
     )
 
-    await _set_sharpness_enabled(client, state, True)
 
-    client.set_sharpness.assert_awaited_once_with(
+async def test_set_sharpness_sensitivity_preserves_enabled_and_level() -> None:
+    coord = _sharpness_coordinator(
+        LumagenState(
+            sharpness_enabled=True,
+            sharpness_level=6,
+            sharpness_sensitivity=SharpnessSensitivity.NORMAL,
+        )
+    )
+    await coord.async_set_sharpness(sensitivity="H")
+    coord.client.set_sharpness.assert_awaited_once_with(
+        enabled=True, level=6, sensitivity="H"
+    )
+
+
+async def test_set_sharpness_enabled_preserves_level_and_sensitivity() -> None:
+    coord = _sharpness_coordinator(
+        LumagenState(
+            sharpness_enabled=False,
+            sharpness_level=5,
+            sharpness_sensitivity=SharpnessSensitivity.HIGH,
+        )
+    )
+    await coord.async_set_sharpness(enabled=True)
+    coord.client.set_sharpness.assert_awaited_once_with(
         enabled=True, level=5, sensitivity="H"
     )
 
 
-async def test_switch_set_sharpness_enabled_uses_defaults_when_state_unobserved() -> None:
-    """Before ZQI30 lands, level/sensitivity are None — fall back to sane defaults."""
-    client = MagicMock()
-    client.set_sharpness = AsyncMock()
-    state = LumagenState()  # all None
+async def test_sharpness_writes_remember_each_other_without_device_readback() -> None:
+    """The core regression: setting the level must not reset sensitivity.
 
-    await _set_sharpness_enabled(client, state, True)
+    With no ZQI30 readback (unsupported firmware, or the window before the
+    first reply), each entity used to default the fields it didn't own — so
+    choosing High sensitivity and then moving the level slider silently
+    reverted sensitivity to Normal.
+    """
+    coord = _sharpness_coordinator()  # device state entirely unknown
 
-    client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=4, sensitivity="N"
+    await coord.async_set_sharpness(sensitivity="H")
+    await coord.async_set_sharpness(level=6)
+
+    assert coord.client.set_sharpness.await_args_list[-1].kwargs == {
+        "enabled": False,
+        "level": 6,
+        "sensitivity": "H",  # preserved, not reverted to "N"
+    }
+
+
+async def test_sharpness_defaults_when_nothing_known() -> None:
+    """Moving the slider on a fresh state must not silently enable sharpening."""
+    coord = _sharpness_coordinator()
+    await coord.async_set_sharpness(level=3)
+    coord.client.set_sharpness.assert_awaited_once_with(
+        enabled=False, level=3, sensitivity="N"
     )
+
+
+def test_effective_sharpness_prefers_device_state_over_last_written() -> None:
+    """Device readback wins once it lands, even if we wrote something else."""
+    coord = _sharpness_coordinator(
+        LumagenState(
+            sharpness_enabled=True,
+            sharpness_level=1,
+            sharpness_sensitivity=SharpnessSensitivity.HIGH,
+        )
+    )
+    coord._last_sharpness_level = 7
+    assert coord.effective_sharpness() == (True, 1, "H")
+
+
+# ---------- Switch wiring ----------
 
 
 async def test_switch_set_game_mode_dispatches_to_client() -> None:
@@ -73,34 +141,78 @@ async def test_switch_set_game_mode_dispatches_to_client() -> None:
 # ---------- Number wiring ----------
 
 
-async def test_number_set_sharpness_level_preserves_enabled_and_sensitivity() -> None:
-    client = MagicMock()
-    client.set_sharpness = AsyncMock()
-    state = LumagenState(
-        sharpness_enabled=True,
-        sharpness_level=2,
-        sharpness_sensitivity=SharpnessSensitivity.NORMAL,
-    )
+async def test_number_sharpness_level_routes_through_coordinator() -> None:
+    """The slider must use the compound merge, not write the triple itself."""
+    from custom_components.lumagen.number import NUMBERS, LumagenNumber
 
-    await _set_sharpness_level(client, state, 7)
+    description = next(d for d in NUMBERS if d.key == "sharpness_level")
+    coord = MagicMock()
+    coord.async_set_sharpness = AsyncMock()
 
-    client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=7, sensitivity="N"
-    )
+    entity = LumagenNumber.__new__(LumagenNumber)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity._optimistic_value = None
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_set_native_value(6)
+
+    coord.async_set_sharpness.assert_awaited_once_with(level=6)
 
 
-async def test_number_set_sharpness_level_defaults_when_state_unobserved() -> None:
-    """Setting only the level on a fresh state must not silently turn sharpening on."""
-    client = MagicMock()
-    client.set_sharpness = AsyncMock()
+async def test_switch_sharpness_enabled_routes_through_coordinator() -> None:
+    from custom_components.lumagen.switch import SWITCHES, LumagenSwitch
 
-    await _set_sharpness_level(client, LumagenState(), 3)
+    description = next(d for d in SWITCHES if d.key == "sharpness_enabled")
+    coord = MagicMock()
+    coord.async_set_sharpness = AsyncMock()
 
-    client.set_sharpness.assert_awaited_once_with(
-        enabled=False,  # default — moving the slider doesn't imply enabling
-        level=3,
-        sensitivity="N",
-    )
+    entity = LumagenSwitch.__new__(LumagenSwitch)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_turn_on()
+    coord.async_set_sharpness.assert_awaited_once_with(enabled=True)
+
+    coord.async_set_sharpness.reset_mock()
+    await entity.async_turn_off()
+    coord.async_set_sharpness.assert_awaited_once_with(enabled=False)
+
+
+async def test_select_sharpness_sensitivity_routes_through_coordinator() -> None:
+    from custom_components.lumagen.select import SELECTS, LumagenSelect
+
+    description = next(d for d in SELECTS if d.key == "sharpness_sensitivity")
+    coord = MagicMock()
+    coord.async_set_sharpness = AsyncMock()
+
+    entity = LumagenSelect.__new__(LumagenSelect)
+    entity.coordinator = coord
+    entity.entity_description = description
+    entity._optimistic_option = None
+    entity.async_write_ha_state = MagicMock()
+
+    await entity.async_select_option("High")
+    coord.async_set_sharpness.assert_awaited_once_with(sensitivity="H")
+
+    coord.async_set_sharpness.reset_mock()
+    await entity.async_select_option("Bogus")
+    coord.async_set_sharpness.assert_not_called()
+
+
+def test_sharpness_entities_share_one_entity_category() -> None:
+    """Enable / level / sensitivity must not be split across UI sections."""
+    from custom_components.lumagen.number import NUMBERS
+    from custom_components.lumagen.select import SELECTS
+    from custom_components.lumagen.switch import SWITCHES
+
+    categories = {
+        next(d for d in SWITCHES if d.key == "sharpness_enabled").entity_category,
+        next(d for d in NUMBERS if d.key == "sharpness_level").entity_category,
+        next(d for d in SELECTS if d.key == "sharpness_sensitivity").entity_category,
+    }
+    assert len(categories) == 1, f"sharpness entities disagree: {categories}"
 
 
 async def test_number_set_fan_speed_dispatches_to_client() -> None:
@@ -111,30 +223,6 @@ async def test_number_set_fan_speed_dispatches_to_client() -> None:
 
 
 # ---------- Select wiring ----------
-
-
-async def test_select_sharpness_sensitivity_normal_to_high_preserves_other_components() -> None:
-    client = MagicMock()
-    client.set_sharpness = AsyncMock()
-    state = LumagenState(
-        sharpness_enabled=True,
-        sharpness_level=6,
-        sharpness_sensitivity=SharpnessSensitivity.NORMAL,
-    )
-
-    await _select_sharpness_sensitivity(client, state, "High")
-
-    client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=6, sensitivity="H"
-    )
-
-
-async def test_select_sharpness_sensitivity_unknown_label_is_no_op() -> None:
-    """A label outside the documented list shouldn't write anything."""
-    client = MagicMock()
-    client.set_sharpness = AsyncMock()
-    await _select_sharpness_sensitivity(client, LumagenState(), "Bogus")
-    client.set_sharpness.assert_not_called()
 
 
 async def test_select_subtitle_shift_off_small_large_dispatch() -> None:

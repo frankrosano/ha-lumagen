@@ -99,18 +99,6 @@ async def _select_memory(
         await client.send_command(value.lower())
 
 
-async def _select_sharpness_sensitivity(
-    client: LumagenClient, state: LumagenState, value: str
-) -> None:
-    """Compound write: preserve current enabled + level when changing sensitivity."""
-    wire = _SHARPNESS_SENSITIVITY_TO_WIRE.get(value)
-    if wire is None:
-        return
-    enabled = state.sharpness_enabled if state.sharpness_enabled is not None else False
-    level = state.sharpness_level if state.sharpness_level is not None else 4
-    await client.set_sharpness(enabled=enabled, level=level, sensitivity=wire)
-
-
 async def _select_subtitle_shift(
     client: LumagenClient, _state: LumagenState, value: str
 ) -> None:
@@ -169,9 +157,14 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
         key="sharpness_sensitivity",
         translation_key="sharpness_sensitivity",
         options=list(_SHARPNESS_SENSITIVITY_OPTIONS),
-        entity_category=EntityCategory.CONFIG,
+        # Deliberately NOT EntityCategory.CONFIG: this belongs with the
+        # sharpness enable switch and level slider (both plain controls),
+        # and splitting the trio across Controls/Configuration in the
+        # device page made them awkward to use together.
         current_fn=_current_sharpness_sensitivity,
-        select_fn=_select_sharpness_sensitivity,
+        # Compound ZY521 write — dispatched via the coordinator so enabled
+        # and level are preserved. select_fn is unused here.
+        select_fn=_select_subtitle_shift,  # placeholder; entity overrides
     ),
     LumagenSelectDescription(
         key="subtitle_shift",
@@ -254,6 +247,14 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
                 gamma_mode=wire,
             )
             self.coordinator.hdr_mapping_gamma_mode = wire
+            self.async_write_ha_state()
+            return
+        if self.entity_description.key == "sharpness_sensitivity":
+            wire = _SHARPNESS_SENSITIVITY_TO_WIRE.get(option)
+            if wire is None:
+                return
+            await self.coordinator.async_set_sharpness(sensitivity=wire)
+            self._optimistic_option = option
             self.async_write_ha_state()
             return
         await self.entity_description.select_fn(

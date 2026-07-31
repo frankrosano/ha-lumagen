@@ -43,19 +43,6 @@ class LumagenNumberDescription(NumberEntityDescription):
     set_fn: Callable[[LumagenClient, LumagenState, int], Awaitable[None]]
 
 
-async def _set_sharpness_level(
-    client: LumagenClient, state: LumagenState, level: int
-) -> None:
-    """Set the sharpness level, preserving the current enabled + sensitivity."""
-    enabled = state.sharpness_enabled if state.sharpness_enabled is not None else False
-    sensitivity = (
-        state.sharpness_sensitivity.value
-        if state.sharpness_sensitivity is not None
-        else "N"
-    )
-    await client.set_sharpness(enabled=enabled, level=level, sensitivity=sensitivity)
-
-
 async def _set_fan_speed(
     client: LumagenClient, _state: LumagenState, level: int
 ) -> None:
@@ -76,7 +63,9 @@ NUMBERS: tuple[LumagenNumberDescription, ...] = (
         native_step=1,
         mode=NumberMode.SLIDER,
         value_fn=lambda s: s.sharpness_level,
-        set_fn=_set_sharpness_level,
+        # Compound ZY521 write — dispatched via the coordinator so enabled
+        # and sensitivity are preserved. set_fn is unused here.
+        set_fn=_set_fan_speed,  # placeholder; entity overrides
     ),
     LumagenNumberDescription(
         key="fan_speed",
@@ -162,6 +151,11 @@ class LumagenNumber(LumagenBaseEntity, NumberEntity):
                 gamma_mode=self.coordinator.hdr_mapping_gamma_mode,
             )
             self.coordinator.hdr_mapping_max_nits = level
+            self.async_write_ha_state()
+            return
+        if self.entity_description.key == "sharpness_level":
+            await self.coordinator.async_set_sharpness(level=level)
+            self._optimistic_value = level
             self.async_write_ha_state()
             return
         await self.entity_description.set_fn(

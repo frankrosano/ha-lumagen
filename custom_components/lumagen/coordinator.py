@@ -65,6 +65,17 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         self.hdr_mapping_max_nits: int = 0
         self.hdr_mapping_gamma_mode: str = "A"
 
+        # Last values we wrote via ZY521 (sharpness). Sharpness is a single
+        # compound command — enabled + level + sensitivity go out together —
+        # so changing one field means re-sending the other two. Device state
+        # is preferred when known; these fill the gap when it isn't (the
+        # window before the first ZQI30 reply lands, or firmware that never
+        # answers it). Without them each entity defaulted the fields it
+        # doesn't own, so setting the level silently reset sensitivity.
+        self._last_sharpness_enabled: bool | None = None
+        self._last_sharpness_level: int | None = None
+        self._last_sharpness_sensitivity: str | None = None
+
     async def _async_setup(self) -> None:
         """Start the pylumagen client; called once by the coordinator.
 
@@ -113,6 +124,60 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
                 await query()
             except LumagenError as err:
                 _LOGGER.debug("Initial %s query failed: %s", query.__name__, err)
+
+    def effective_sharpness(self) -> tuple[bool, int, str]:
+        """Best-known ``(enabled, level, sensitivity)`` for a ZY521 write.
+
+        Device-reported state wins; falls back to what we last wrote, then
+        to conservative defaults (off, level 4, normal sensitivity).
+        """
+        state = self.data
+        enabled = state.sharpness_enabled
+        if enabled is None:
+            enabled = self._last_sharpness_enabled
+        level = state.sharpness_level
+        if level is None:
+            level = self._last_sharpness_level
+        sensitivity = (
+            state.sharpness_sensitivity.value
+            if state.sharpness_sensitivity is not None
+            else self._last_sharpness_sensitivity
+        )
+        return (
+            enabled if enabled is not None else False,
+            level if level is not None else 4,
+            sensitivity or "N",
+        )
+
+    async def async_set_sharpness(
+        self,
+        *,
+        enabled: bool | None = None,
+        level: int | None = None,
+        sensitivity: str | None = None,
+    ) -> None:
+        """Change one part of the sharpness triple, preserving the rest.
+
+        ``ZY521ELS`` is a single compound command, so the two fields the
+        caller didn't specify are carried over from
+        :meth:`effective_sharpness` rather than re-defaulted. The written
+        values are remembered so a follow-up change to a different field
+        doesn't lose them if the device hasn't reported back yet.
+        """
+        current_enabled, current_level, current_sensitivity = (
+            self.effective_sharpness()
+        )
+        new_enabled = current_enabled if enabled is None else enabled
+        new_level = current_level if level is None else level
+        new_sensitivity = (
+            current_sensitivity if sensitivity is None else sensitivity
+        )
+        await self.client.set_sharpness(
+            enabled=new_enabled, level=new_level, sensitivity=new_sensitivity
+        )
+        self._last_sharpness_enabled = new_enabled
+        self._last_sharpness_level = new_level
+        self._last_sharpness_sensitivity = new_sensitivity
 
     async def _async_update_data(self) -> LumagenState:
         """Seed the initial data after ``start()``.

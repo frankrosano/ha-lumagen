@@ -42,19 +42,6 @@ class LumagenSwitchDescription(SwitchEntityDescription):
     set_fn: Callable[[LumagenClient, LumagenState, bool], Awaitable[None]]
 
 
-async def _set_sharpness_enabled(
-    client: LumagenClient, state: LumagenState, enabled: bool
-) -> None:
-    """Toggle sharpness while preserving level and sensitivity."""
-    level = state.sharpness_level if state.sharpness_level is not None else 4
-    sensitivity = (
-        state.sharpness_sensitivity.value
-        if state.sharpness_sensitivity is not None
-        else "N"
-    )
-    await client.set_sharpness(enabled=enabled, level=level, sensitivity=sensitivity)
-
-
 async def _set_game_mode(
     client: LumagenClient, _state: LumagenState, enabled: bool
 ) -> None:
@@ -86,7 +73,9 @@ SWITCHES: tuple[LumagenSwitchDescription, ...] = (
         key="sharpness_enabled",
         translation_key="sharpness_enabled",
         value_fn=lambda s: s.sharpness_enabled,
-        set_fn=_set_sharpness_enabled,
+        # Compound ZY521 write — dispatched via the coordinator so the
+        # level and sensitivity are preserved. set_fn is unused here.
+        set_fn=_set_game_mode,  # placeholder; entity overrides
     ),
     LumagenSwitchDescription(
         key="game_mode",
@@ -131,12 +120,17 @@ class LumagenSwitch(LumagenBaseEntity, SwitchEntity):
     def is_on(self) -> bool | None:
         return self.entity_description.value_fn(self.coordinator.data)
 
-    async def async_turn_on(self, **kwargs: object) -> None:
+    async def _async_set(self, enabled: bool) -> None:
+        if self.entity_description.key == "sharpness_enabled":
+            await self.coordinator.async_set_sharpness(enabled=enabled)
+            self.async_write_ha_state()
+            return
         await self.entity_description.set_fn(
-            self.coordinator.client, self.coordinator.data, True
+            self.coordinator.client, self.coordinator.data, enabled
         )
 
+    async def async_turn_on(self, **kwargs: object) -> None:
+        await self._async_set(True)
+
     async def async_turn_off(self, **kwargs: object) -> None:
-        await self.entity_description.set_fn(
-            self.coordinator.client, self.coordinator.data, False
-        )
+        await self._async_set(False)
