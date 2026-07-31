@@ -204,6 +204,20 @@ async def test_options_flow_defaults_to_60_and_saves(hass: HomeAssistant) -> Non
     assert isinstance(entry.options[CONF_POLL_INTERVAL], int)
 
 
+def test_default_poll_interval_is_within_its_own_selectable_range() -> None:
+    """The default must be offerable by the options flow and safe for the client."""
+    from custom_components.lumagen.const import (
+        DEFAULT_POLL_INTERVAL,
+        MAX_POLL_INTERVAL,
+        MIN_POLL_INTERVAL,
+    )
+    from custom_components.lumagen.coordinator import _stale_timeout_for
+
+    assert MIN_POLL_INTERVAL <= DEFAULT_POLL_INTERVAL <= MAX_POLL_INTERVAL
+    # pylumagen raises if the staleness timeout doesn't exceed the interval.
+    assert _stale_timeout_for(DEFAULT_POLL_INTERVAL) > DEFAULT_POLL_INTERVAL
+
+
 def test_stale_timeout_scales_with_poll_interval() -> None:
     """pylumagen rejects stale_timeout <= poll interval; ours must always clear it."""
     from custom_components.lumagen.coordinator import _stale_timeout_for

@@ -29,7 +29,7 @@
           "poll_interval": "Polling interval"
         },
         "data_description": {
-          "poll_interval": "Seconds between status polls. Default is 60."
+          "poll_interval": "Seconds between status polls. Default is 15. While the Lumagen is off, only a lightweight power check is sent."
         }
       }
     }

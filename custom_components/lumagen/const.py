@@ -21,8 +21,15 @@ CONF_URL: Final = "url"
 # Lower = snappier, at the cost of more traffic on a 9600-baud link. The
 # floor of 5s keeps a poll cycle comfortably shorter than the round trip
 # for the five secondary queries plus their replies.
+#
+# 15s is the default because the 60s it replaced made front-panel changes
+# feel broken rather than merely delayed. The cost is modest: while the
+# device is on, a cycle issues six queries (ZQI25 plus the five secondary
+# ones) totalling a few hundred bytes with replies — well under 2% of a
+# 9600-baud link's capacity at this cadence. While the device is off,
+# pylumagen only issues the single power query per cycle.
 CONF_POLL_INTERVAL: Final = "poll_interval"
-DEFAULT_POLL_INTERVAL: Final = 60
+DEFAULT_POLL_INTERVAL: Final = 15
 MIN_POLL_INTERVAL: Final = 5
 MAX_POLL_INTERVAL: Final = 600
 
