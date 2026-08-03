@@ -226,3 +226,6 @@ __marimo__/
 # Agent-tool scratch files
 .commit-msg.tmp
 .commit-msg.*.tmp
+
+# macOS
+.DS_Store
