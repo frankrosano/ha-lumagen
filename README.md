@@ -49,6 +49,21 @@ Direct RS-232 (cabled from your HA host to the Lumagen's DB9) also works — the
 2. From the dropdown, pick the serial port for the Lumagen. ESPHome-proxied ports appear with their friendly name ("Lumagen") plus the bridge's hostname; physical ports appear with their `/dev/tty*` path.
 3. The flow opens the port, queries `ZQS01` for the device info, and creates the config entry with the detected model and firmware in the title.
 
+### A note on `aioesphomeapi`
+
+This integration requires plain `pylumagen`, deliberately **not**
+`pylumagen[esphome]`. The ESPHome serial transport needs `aioesphomeapi`, but
+Home Assistant already ships it — pinned exactly — for its own ESPHome
+integration, and installs custom-integration requirements into the same
+site-packages. If `pylumagen` also declared it (necessarily at a looser
+range), the resolver could move HA's pinned version; because `aioesphomeapi`
+is a Cython package, that leaves mismatched `.so` files behind and breaks the
+ESPHome integration with errors like `APIConnection size changed` or
+`does not export expected C function make_noise_packets`.
+
+Nothing is lost: an `esphome://` URL means you're using the ESPHome
+integration, which provides the package. HA stays its single owner.
+
 ## Lumagen-side prerequisite: unsolicited reporting
 
 For real-time updates rather than polling, enable Full v5 reporting on the Lumagen:

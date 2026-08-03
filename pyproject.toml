@@ -13,6 +13,15 @@ dev = [
     # HA's `usb` integration imports aiousbwatcher; it's an extra on the
     # homeassistant package, so pull it in explicitly for the test env.
     "aiousbwatcher",
+    # Also for HA's `usb` integration: its serial_proxy_stub imports
+    # serialx.platforms.serial_esphome at module scope, which imports
+    # aioesphomeapi — yet usb/manifest.json doesn't list it (HA relies on the
+    # `esphome` integration having installed it). Nothing in our own
+    # dependency tree pulls it any more: pylumagen deliberately dropped the
+    # serialx[esphome] extra so it can't move the version HA pins for its
+    # ESPHome integration. So the test env has to ask for it directly, or
+    # importing `usb` fails at collection.
+    "aioesphomeapi",
     # We import from pylumagen in the integration code, so it must be
     # resolvable from the test env.
     "pylumagen",
