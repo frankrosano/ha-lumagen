@@ -29,8 +29,30 @@ In the `dev` group of `pyproject.toml`:
 
 - `pytest-homeassistant-custom-component >= 0.13` — pulls in HA core + pytest fixtures pinned to a real release
 - `aiousbwatcher` — pulled explicitly because HA's `usb` integration imports it (it's an optional extra on the `homeassistant` package)
+- `aioesphomeapi` — also for `usb`: its `serial_proxy_stub` imports `serialx.platforms.serial_esphome` at module scope, which imports `aioesphomeapi`, yet `usb/manifest.json` doesn't declare it (HA relies on the `esphome` integration having installed it). `pylumagen` deliberately doesn't pull it either, so without this entry importing `usb` fails at test collection.
 - `pylumagen` (editable, via uv source override) — needed because integration code imports it
 - `ruff >= 0.7`, `mypy >= 1.11`
+
+### The tested HA version floats, on purpose
+
+`pytest-homeassistant-custom-component` is what decides which `homeassistant`
+release lands in `.venv`, and it's deliberately left as an open range with
+`uv.lock` gitignored. This stack is developed against whatever HA is current
+because that's what the author runs in production, so a floating test env
+surfaces HA regressions at the same time they'd bite live.
+
+Two consequences to be aware of rather than surprised by:
+
+- **`uv sync` can move the HA version under you**, including mid-session after
+  an unrelated `pyproject.toml` edit. If behaviour changes without a code
+  change, check `.venv`'s HA version first.
+- **Any HA pin quoted in docs is a snapshot.** Observed drift:
+  `aioesphomeapi` went `==44.21.0` (HA 2026.5.1) → `==45.3.1` (HA 2026.7.4),
+  and `serialx` `==1.7.1` → `==1.8.2`, across two minor releases. Read live
+  values from `homeassistant/components/<domain>/manifest.json` instead of
+  trusting a number written down anywhere.
+
+Don't "fix" this by committing a lock or pinning the plugin.
 
 ## Tooling Configuration
 
