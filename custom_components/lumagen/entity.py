@@ -4,18 +4,40 @@ from __future__ import annotations
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from pylumagen import LumagenState
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import LumagenCoordinator
+
+
+def _displayable_serial(state: LumagenState | None) -> str | None:
+    """The Lumagen's serial, or ``None`` when it isn't worth showing.
+
+    ``!S01`` reports a serial that some units fill with zeros. pylumagen
+    passes that through verbatim (it's what the device said), so deciding
+    whether ``000000`` is worth putting on the device page is a
+    presentation call and belongs here rather than in the library.
+
+    Note this is display only — the serial is explicitly *not* used for
+    device identity, because a line of units all reporting zeros would
+    collide. Identity stays keyed off the config entry.
+    """
+    if state is None or not state.serial:
+        return None
+    return state.serial if state.serial.strip("0") else None
 
 
 class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
     """Shared parent for all Lumagen entities.
 
     Device identity is keyed off the config-entry unique_id (a hash of the
-    serialx URL — see :mod:`.config_flow`). Model and firmware are filled
-    in as soon as the Lumagen reports them via ``!S01``; until then they
-    show as ``None`` in the device registry, which HA handles gracefully.
+    serialx URL — see :mod:`.config_flow`). Model, model number, serial and
+    firmware are filled in as soon as the Lumagen reports them via
+    ``!S01``; until then they show as ``None`` in the device registry, which
+    HA handles gracefully.
+
+    The reported serial is deliberately *not* part of identity even though
+    it looks like the natural candidate — see :func:`_displayable_serial`.
 
     ``configuration_url`` is intentionally not set. The URL we'd have to
     offer is the serialx/ESPHome port URL (e.g.
@@ -37,6 +59,10 @@ class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
             identifiers={(DOMAIN, unique_base)},
             manufacturer=MANUFACTURER,
             model=state.model if state else None,
+            # model is the same string ("RadiancePro") for every unit in the
+            # line; the model *number* is what distinguishes the hardware.
+            model_id=state.model_number if state else None,
+            serial_number=_displayable_serial(state),
             sw_version=state.firmware if state else None,
             name=coordinator.config_entry.title,
         )

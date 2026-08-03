@@ -17,11 +17,13 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pylumagen import (
+    HdrGammaMode,
     LumagenClient,
     LumagenConnectionError,
     LumagenError,
     LumagenState,
     LumagenTransport,
+    SharpnessSensitivity,
 )
 
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN
@@ -63,7 +65,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         # context. Defaults match the Lumagen's documented power-on state
         # (mapping disabled, auto gamma).
         self.hdr_mapping_max_nits: int = 0
-        self.hdr_mapping_gamma_mode: str = "A"
+        self.hdr_mapping_gamma_mode: HdrGammaMode = HdrGammaMode.AUTO
 
         # Last values we wrote via ZY521 (sharpness). Sharpness is a single
         # compound command — enabled + level + sensitivity go out together —
@@ -74,7 +76,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         # doesn't own, so setting the level silently reset sensitivity.
         self._last_sharpness_enabled: bool | None = None
         self._last_sharpness_level: int | None = None
-        self._last_sharpness_sensitivity: str | None = None
+        self._last_sharpness_sensitivity: SharpnessSensitivity | None = None
 
     async def _async_setup(self) -> None:
         """Start the pylumagen client; called once by the coordinator.
@@ -125,7 +127,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
             except LumagenError as err:
                 _LOGGER.debug("Initial %s query failed: %s", query.__name__, err)
 
-    def effective_sharpness(self) -> tuple[bool, int, str]:
+    def effective_sharpness(self) -> tuple[bool, int, SharpnessSensitivity]:
         """Best-known ``(enabled, level, sensitivity)`` for a ZY521 write.
 
         Device-reported state wins; falls back to what we last wrote, then
@@ -138,15 +140,13 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         level = state.sharpness_level
         if level is None:
             level = self._last_sharpness_level
-        sensitivity = (
-            state.sharpness_sensitivity.value
-            if state.sharpness_sensitivity is not None
-            else self._last_sharpness_sensitivity
-        )
+        sensitivity = state.sharpness_sensitivity
+        if sensitivity is None:
+            sensitivity = self._last_sharpness_sensitivity
         return (
             enabled if enabled is not None else False,
             level if level is not None else 4,
-            sensitivity or "N",
+            sensitivity if sensitivity is not None else SharpnessSensitivity.NORMAL,
         )
 
     async def async_set_sharpness(
@@ -154,7 +154,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         *,
         enabled: bool | None = None,
         level: int | None = None,
-        sensitivity: str | None = None,
+        sensitivity: SharpnessSensitivity | None = None,
     ) -> None:
         """Change one part of the sharpness triple, preserving the rest.
 

@@ -37,58 +37,62 @@ from homeassistant.components.remote import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from pylumagen import Aspect, Input, Memory, Misc, Navigation, Power
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
 
-# Friendly command name -> Lumagen wire command (no CR). Mirrors the command
-# tables in pylumagen's commands.py / Tip0011. Anything not listed here is
-# sent verbatim, so the remote doubles as an escape hatch for one-shot
-# commands the integration doesn't name (CR-terminated commands excepted —
-# use the send_raw_command service for those).
+# Friendly command name -> Lumagen wire command (no CR). Wire values come
+# from pylumagen's command enums, which are the single source of truth for
+# them — do not re-type the literals here. Anything not listed is sent
+# verbatim, so the remote doubles as an escape hatch for one-shot commands
+# the integration doesn't name (CR-terminated commands excepted — use the
+# send_raw_command service for those). That pass-through is also why a
+# missing entry is dangerous rather than merely absent: the friendly name
+# itself would go out as ASCII, so keep this table generated from the enums.
 _COMMANDS: dict[str, str] = {
     # Power
-    "power_on": "%",
-    "standby": "$",
+    "power_on": Power.ON,
+    "standby": Power.STANDBY,
     # OSD navigation
-    "menu": "M",
-    "exit": "X",
-    "ok": "k",
-    "menu_off": "!",
-    "up": "^",
-    "down": "v",
-    "left": "<",
-    "right": ">",
+    "menu": Navigation.MENU,
+    "exit": Navigation.EXIT,
+    "ok": Navigation.OK,
+    "menu_off": Navigation.MENU_OFF,
+    "up": Navigation.UP,
+    "down": Navigation.DOWN,
+    "left": Navigation.LEFT,
+    "right": Navigation.RIGHT,
     # Direct inputs
-    "input_1": "i1",
-    "input_2": "i2",
-    "input_3": "i3",
-    "input_4": "i4",
-    "input_5": "i5",
-    "input_6": "i6",
-    "input_7": "i7",
-    "input_8": "i8",
-    "previous_input": "P",
+    "input_1": Input.INPUT_1,
+    "input_2": Input.INPUT_2,
+    "input_3": Input.INPUT_3,
+    "input_4": Input.INPUT_4,
+    "input_5": Input.INPUT_5,
+    "input_6": Input.INPUT_6,
+    "input_7": Input.INPUT_7,
+    "input_8": Input.INPUT_8,
+    "previous_input": Input.PREVIOUS,
     # Aspect ratio
-    "aspect_4_3": "n",
-    "aspect_letterbox": "l",
-    "aspect_16_9": "w",
-    "aspect_16_9_nz": "*",
-    "aspect_1_85": "j",
-    "aspect_2_35": "W",
-    "aspect_2_40": "G",
-    "auto_aspect_on": "~",
-    "auto_aspect_off": "V",
+    "aspect_4_3": Aspect.RATIO_4_3,
+    "aspect_letterbox": Aspect.LETTERBOX,
+    "aspect_16_9": Aspect.RATIO_16_9,
+    "aspect_16_9_nz": Aspect.RATIO_16_9_NZ,
+    "aspect_1_85": Aspect.RATIO_1_85,
+    "aspect_2_35": Aspect.RATIO_2_35,
+    "aspect_2_40": Aspect.RATIO_2_40,
+    "auto_aspect_on": Aspect.AUTO_ENABLE,
+    "auto_aspect_off": Aspect.AUTO_DISABLE,
     # Memory
-    "memory_a": "a",
-    "memory_b": "b",
-    "memory_c": "c",
-    "memory_d": "d",
+    "memory_a": Memory.A,
+    "memory_b": Memory.B,
+    "memory_c": Memory.C,
+    "memory_d": Memory.D,
     # Misc
-    "hdr_setup": "Y",
-    "test_pattern": "H",
-    "osd_on": "g",
-    "osd_off": "s",
+    "hdr_setup": Misc.HDR_SETUP,
+    "test_pattern": Misc.TEST_PATTERN,
+    "osd_on": Misc.OSD_ON,
+    "osd_off": Misc.OSD_OFF,
 }
 
 

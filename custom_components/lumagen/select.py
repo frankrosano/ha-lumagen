@@ -8,8 +8,16 @@ from dataclasses import dataclass
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import LumagenClient, LumagenState
+from pylumagen import (
+    Aspect,
+    HdrGammaMode,
+    LumagenClient,
+    LumagenState,
+    Memory,
+    SharpnessSensitivity,
+)
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -26,23 +34,32 @@ class LumagenSelectDescription(SelectEntityDescription):
     ``select_fn`` is given the client AND a snapshot of state at write
     time. State access is needed by compound-write commands like
     ``set_sharpness`` that must preserve other components' values.
+
+    ``select_fn`` is ``None`` for the entries whose write path
+    :meth:`LumagenSelect.async_select_option` handles itself (the
+    compound ZY521 / ZY417 commands, which need coordinator state rather
+    than just the client). ``None`` rather than a stand-in callable so a
+    mismatch between the override branch and the descriptor surfaces as a
+    loud failure instead of quietly dispatching the wrong command.
     """
 
     current_fn: Callable[[LumagenState], str | None]
-    select_fn: Callable[[LumagenClient, LumagenState, str], Awaitable[None]]
+    select_fn: Callable[[LumagenClient, LumagenState, str], Awaitable[None]] | None = None
 
 
 # --- Aspect ratio (existing) ---
 # Aspect labels match the Lumagen manual. Order matches the old ESPHome YAML
-# so existing dashboards/automations don't need re-labeling.
-_ASPECT_COMMANDS: dict[str, str] = {
-    "4:3": "n",
-    "Letterbox": "l",
-    "16:9": "w",
-    "16:9 NZ": "*",
-    "1.85": "j",
-    "2.35": "W",
-    "2.40": "G",
+# so existing dashboards/automations don't need re-labeling. Wire commands
+# come from pylumagen's Aspect enum — never re-type the literals here (`w`
+# is 16:9 and `W` is 2.35, so a case slip is a silently wrong preset).
+_ASPECT_COMMANDS: dict[str, Aspect] = {
+    "4:3": Aspect.RATIO_4_3,
+    "Letterbox": Aspect.LETTERBOX,
+    "16:9": Aspect.RATIO_16_9,
+    "16:9 NZ": Aspect.RATIO_16_9_NZ,
+    "1.85": Aspect.RATIO_1_85,
+    "2.35": Aspect.RATIO_2_35,
+    "2.40": Aspect.RATIO_2_40,
 }
 
 
@@ -60,9 +77,25 @@ _CONTENT_ASPECT_TO_LABEL: tuple[tuple[int, str], ...] = (
 )
 
 
+# --- Memory (A-D) ---
+# The dropdown label is NOT the wire command. The Lumagen reports the active
+# memory as an uppercase letter but *recalls* one with a lowercase command,
+# so deriving the command from the label (the old ``value.lower()``) only
+# held while the labels happened to be bare letters — relabeling them to
+# e.g. "Memory A" would have silently sent garbage. Map explicitly.
+_MEMORY_COMMANDS: dict[str, Memory] = {
+    "A": Memory.A,
+    "B": Memory.B,
+    "C": Memory.C,
+    "D": Memory.D,
+}
+
+
 # --- Sharpness sensitivity (compound-write — preserves enabled + level) ---
-_SHARPNESS_SENSITIVITY_OPTIONS = ("Normal", "High")
-_SHARPNESS_SENSITIVITY_TO_WIRE = {"Normal": "N", "High": "H"}
+_SHARPNESS_SENSITIVITY_TO_WIRE: dict[str, SharpnessSensitivity] = {
+    "Normal": SharpnessSensitivity.NORMAL,
+    "High": SharpnessSensitivity.HIGH,
+}
 _SHARPNESS_WIRE_TO_LABEL = {v: k for k, v in _SHARPNESS_SENSITIVITY_TO_WIRE.items()}
 
 
@@ -76,8 +109,11 @@ _SUBTITLE_SHIFT_TO_LEVEL = {"Off": 0, "Small": 1, "Large": 2}
 # both halves of the ZY417 compound are tracked optimistically on the
 # coordinator. The entity handles read/write directly against that state
 # rather than going through select_fn.
-_HDR_GAMMA_MODE_OPTIONS = ("Auto", "HDR", "SDR")
-_HDR_GAMMA_LABEL_TO_WIRE = {"Auto": "A", "HDR": "H", "SDR": "S"}
+_HDR_GAMMA_LABEL_TO_WIRE: dict[str, HdrGammaMode] = {
+    "Auto": HdrGammaMode.AUTO,
+    "HDR": HdrGammaMode.HDR,
+    "SDR": HdrGammaMode.SDR,
+}
 _HDR_GAMMA_WIRE_TO_LABEL = {v: k for k, v in _HDR_GAMMA_LABEL_TO_WIRE.items()}
 
 
@@ -95,8 +131,9 @@ async def _select_aspect(
 async def _select_memory(
     client: LumagenClient, _state: LumagenState, value: str
 ) -> None:
-    if value in ("A", "B", "C", "D"):
-        await client.send_command(value.lower())
+    command = _MEMORY_COMMANDS.get(value)
+    if command is not None:
+        await client.send_command(command)
 
 
 async def _select_subtitle_shift(
@@ -132,7 +169,7 @@ def _closest_aspect_label(raw: str | None) -> str | None:
 def _current_sharpness_sensitivity(state: LumagenState) -> str | None:
     if state.sharpness_sensitivity is None:
         return None
-    return _SHARPNESS_WIRE_TO_LABEL.get(state.sharpness_sensitivity.value)
+    return _SHARPNESS_WIRE_TO_LABEL.get(state.sharpness_sensitivity)
 
 
 # --- Entity descriptors ---
@@ -149,22 +186,21 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
     LumagenSelectDescription(
         key="memory_select",
         translation_key="memory_select",
-        options=["A", "B", "C", "D"],
+        options=list(_MEMORY_COMMANDS),
         current_fn=lambda s: s.input_memory,
         select_fn=_select_memory,
     ),
     LumagenSelectDescription(
         key="sharpness_sensitivity",
         translation_key="sharpness_sensitivity",
-        options=list(_SHARPNESS_SENSITIVITY_OPTIONS),
+        options=list(_SHARPNESS_SENSITIVITY_TO_WIRE),
         # Deliberately NOT EntityCategory.CONFIG: this belongs with the
         # sharpness enable switch and level slider (both plain controls),
         # and splitting the trio across Controls/Configuration in the
         # device page made them awkward to use together.
         current_fn=_current_sharpness_sensitivity,
         # Compound ZY521 write — dispatched via the coordinator so enabled
-        # and level are preserved. select_fn is unused here.
-        select_fn=_select_subtitle_shift,  # placeholder; entity overrides
+        # and level are preserved, so no select_fn (see the descriptor).
     ),
     LumagenSelectDescription(
         key="subtitle_shift",
@@ -179,14 +215,13 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
     LumagenSelectDescription(
         key="hdr_gamma_mode",
         translation_key="hdr_gamma_mode",
-        options=list(_HDR_GAMMA_MODE_OPTIONS),
+        options=list(_HDR_GAMMA_LABEL_TO_WIRE),
         entity_category=EntityCategory.CONFIG,
-        # Read/write goes through coordinator.hdr_mapping_gamma_mode —
-        # the entity overrides the dispatch. current_fn / select_fn here
-        # are unused for this entry but must be set to satisfy the
-        # dataclass contract.
+        # Read/write goes through coordinator.hdr_mapping_gamma_mode — the
+        # entity overrides both halves of the dispatch, so no select_fn
+        # (see the descriptor). current_fn still has to be supplied; it
+        # never runs for this entry.
         current_fn=lambda _s: None,
-        select_fn=_select_subtitle_shift,  # placeholder; entity overrides
     ),
 )
 
@@ -228,8 +263,9 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         if self.entity_description.key == "hdr_gamma_mode":
-            wire = self.coordinator.hdr_mapping_gamma_mode
-            label = _HDR_GAMMA_WIRE_TO_LABEL.get(wire)
+            label = _HDR_GAMMA_WIRE_TO_LABEL.get(
+                self.coordinator.hdr_mapping_gamma_mode
+            )
             return label if label in (self.entity_description.options or []) else None
         current = self.entity_description.current_fn(self.coordinator.data)
         options = self.entity_description.options or []
@@ -239,26 +275,30 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         if self.entity_description.key == "hdr_gamma_mode":
-            wire = _HDR_GAMMA_LABEL_TO_WIRE.get(option)
-            if wire is None:
+            gamma_mode = _HDR_GAMMA_LABEL_TO_WIRE.get(option)
+            if gamma_mode is None:
                 return
             await self.coordinator.client.set_hdr_intensity_mapping(
                 display_max_nits=self.coordinator.hdr_mapping_max_nits,
-                gamma_mode=wire,
+                gamma_mode=gamma_mode,
             )
-            self.coordinator.hdr_mapping_gamma_mode = wire
+            self.coordinator.hdr_mapping_gamma_mode = gamma_mode
             self.async_write_ha_state()
             return
         if self.entity_description.key == "sharpness_sensitivity":
-            wire = _SHARPNESS_SENSITIVITY_TO_WIRE.get(option)
-            if wire is None:
+            sensitivity = _SHARPNESS_SENSITIVITY_TO_WIRE.get(option)
+            if sensitivity is None:
                 return
-            await self.coordinator.async_set_sharpness(sensitivity=wire)
+            await self.coordinator.async_set_sharpness(sensitivity=sensitivity)
             self._optimistic_option = option
             self.async_write_ha_state()
             return
-        await self.entity_description.select_fn(
-            self.coordinator.client, self.coordinator.data, option
-        )
+        select_fn = self.entity_description.select_fn
+        if select_fn is None:
+            raise HomeAssistantError(
+                f"Lumagen select {self.entity_description.key!r} has no write path; "
+                "an entity override was expected to handle it."
+            )
+        await select_fn(self.coordinator.client, self.coordinator.data, option)
         self._optimistic_option = option
         self.async_write_ha_state()

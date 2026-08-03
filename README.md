@@ -51,14 +51,16 @@ Direct RS-232 (cabled from your HA host to the Lumagen's DB9) also works — the
 
 ## Lumagen-side prerequisite: unsolicited reporting
 
-For real-time updates rather than 60-second polling, enable Full v5 (or Full v4 on older firmware) reporting on the Lumagen:
+For real-time updates rather than polling, enable Full v5 reporting on the Lumagen:
 
 1. On the Lumagen remote or OSD, press `MENU`.
 2. Navigate: **Other → I/O Setup → RS-232 Setup → Report mode changes**.
-3. Cycle to **Full v5** (or **Full v4** on older firmware).
+3. Cycle to **Full v5**.
 4. Press `OK`, then `SAVE` to persist.
 
-The integration works either way; this just makes it snappier.
+The integration works either way; this just makes it snappier. Leaving it at **Full v4** also works — those pushes still parse — you just don't get power and memory changes in real time.
+
+Separately, note that Full v5 is a **firmware requirement**, not just a menu preference: `pylumagen` polls status exclusively with `ZQI25`, so firmware predating it isn't supported. A device on such firmware won't show an error, its status sensors simply stay unknown; the library logs a warning at startup when it detects that case.
 
 ## Exposed entities
 

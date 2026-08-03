@@ -55,10 +55,11 @@ To test against a real Lumagen during development, point the integration at the 
 | `pylumagen` exception | Translation |
 |---|---|
 | `LumagenConnectionError` | Raise `ConfigEntryNotReady` from `async_setup_entry`, or mark device unavailable from the coordinator |
-| `LumagenTimeoutError` | Raise `UpdateFailed` from `_async_update_data` |
-| `LumagenCommandError` | Log a warning; don't surface to the user |
+| `LumagenCommandError` | Log a warning; don't surface to the user. Also subclasses `ValueError` |
 
 No `LumagenAuthError` — Lumagen has no auth. ESPHome PSK errors arrive as `LumagenConnectionError`.
+
+No timeout exception: `pylumagen` has nothing request/response, so it never raises one. `UpdateFailed` comes from this side — `_async_update_data` raises it when the client isn't connected — and the config flow imposes its own deadline with `asyncio.timeout`, catching the builtin `TimeoutError`.
 
 ## Distribution
 

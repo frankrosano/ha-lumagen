@@ -27,6 +27,7 @@ from dataclasses import dataclass
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pylumagen import Aspect, LumagenClient, LumagenState
 
@@ -36,10 +37,17 @@ from .entity import LumagenBaseEntity
 
 @dataclass(frozen=True, kw_only=True)
 class LumagenSwitchDescription(SwitchEntityDescription):
-    """Switch description with a value-from-state and an on/off writer."""
+    """Switch description with a value-from-state and an on/off writer.
+
+    ``set_fn`` is ``None`` for the sharpness switch, whose write path
+    :meth:`LumagenSwitch._async_set` handles itself (the compound ZY521
+    command needs coordinator state, not just the client). ``None`` rather
+    than a stand-in callable so a mismatch between the override branch and
+    the descriptor fails loudly instead of quietly toggling game mode.
+    """
 
     value_fn: Callable[[LumagenState], bool | None]
-    set_fn: Callable[[LumagenClient, LumagenState, bool], Awaitable[None]]
+    set_fn: Callable[[LumagenClient, LumagenState, bool], Awaitable[None]] | None = None
 
 
 async def _set_game_mode(
@@ -62,7 +70,7 @@ async def _set_auto_aspect(
     is the deliberate refresh.
     """
     await client.send_command(
-        Aspect.AUTO_ENABLE.value if enabled else Aspect.AUTO_DISABLE.value,
+        Aspect.AUTO_ENABLE if enabled else Aspect.AUTO_DISABLE,
         refresh=False,
     )
     await client.query_auto_aspect()
@@ -73,9 +81,8 @@ SWITCHES: tuple[LumagenSwitchDescription, ...] = (
         key="sharpness_enabled",
         translation_key="sharpness_enabled",
         value_fn=lambda s: s.sharpness_enabled,
-        # Compound ZY521 write — dispatched via the coordinator so the
-        # level and sensitivity are preserved. set_fn is unused here.
-        set_fn=_set_game_mode,  # placeholder; entity overrides
+        # Compound ZY521 write — dispatched via the coordinator so the level
+        # and sensitivity are preserved, so no set_fn (see the descriptor).
     ),
     LumagenSwitchDescription(
         key="game_mode",
@@ -125,9 +132,13 @@ class LumagenSwitch(LumagenBaseEntity, SwitchEntity):
             await self.coordinator.async_set_sharpness(enabled=enabled)
             self.async_write_ha_state()
             return
-        await self.entity_description.set_fn(
-            self.coordinator.client, self.coordinator.data, enabled
-        )
+        set_fn = self.entity_description.set_fn
+        if set_fn is None:
+            raise HomeAssistantError(
+                f"Lumagen switch {self.entity_description.key!r} has no write path; "
+                "an entity override was expected to handle it."
+            )
+        await set_fn(self.coordinator.client, self.coordinator.data, enabled)
 
     async def async_turn_on(self, **kwargs: object) -> None:
         await self._async_set(True)
