@@ -15,8 +15,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiolumagen import Colorspace, HdrStatus, LumagenState, SourceMode
 from homeassistant.components.media_player import MediaPlayerState
-from pylumagen import Colorspace, HdrStatus, LumagenState, SourceMode
 
 from custom_components.lumagen.media_player import LumagenMediaPlayer
 

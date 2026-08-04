@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiolumagen import LumagenState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from pylumagen import LumagenState
 
 from custom_components.lumagen.const import (
     ATTR_COMMAND,

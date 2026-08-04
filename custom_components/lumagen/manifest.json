@@ -10,9 +10,9 @@
   "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/frankrosano/ha-lumagen/issues",
-  "loggers": ["pylumagen"],
+  "loggers": ["aiolumagen"],
   "quality_scale": "bronze",
   "requirements": [
-    "pylumagen@git+https://github.com/frankrosano/pylumagen.git@v0.3.2"
+    "aiolumagen@git+https://github.com/frankrosano/pylumagen.git@v0.4.0"
   ]
 }

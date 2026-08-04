@@ -1,20 +1,20 @@
 """Config-flow tests for the Lumagen integration.
 
 These run against an in-memory HA via ``pytest-homeassistant-custom-component``
-with every pylumagen touchpoint mocked. They confirm the wiring between
+with every aiolumagen touchpoint mocked. They confirm the wiring between
 the dropdown, unique-ID generation, validation, and entry creation —
-not the library itself (that's covered in pylumagen's own tests).
+not the library itself (that's covered in aiolumagen's own tests).
 """
 
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from aiolumagen import LumagenConnectionError, LumagenState
 from homeassistant import config_entries
 from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pylumagen import LumagenConnectionError, LumagenState
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.lumagen.const import CONF_POLL_INTERVAL, CONF_URL, DOMAIN
@@ -214,12 +214,12 @@ def test_default_poll_interval_is_within_its_own_selectable_range() -> None:
     from custom_components.lumagen.coordinator import _stale_timeout_for
 
     assert MIN_POLL_INTERVAL <= DEFAULT_POLL_INTERVAL <= MAX_POLL_INTERVAL
-    # pylumagen raises if the staleness timeout doesn't exceed the interval.
+    # aiolumagen raises if the staleness timeout doesn't exceed the interval.
     assert _stale_timeout_for(DEFAULT_POLL_INTERVAL) > DEFAULT_POLL_INTERVAL
 
 
 def test_stale_timeout_scales_with_poll_interval() -> None:
-    """pylumagen rejects stale_timeout <= poll interval; ours must always clear it."""
+    """aiolumagen rejects stale_timeout <= poll interval; ours must always clear it."""
     from custom_components.lumagen.coordinator import _stale_timeout_for
 
     # Default keeps the library's historical 90s exactly.

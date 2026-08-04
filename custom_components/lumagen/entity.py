@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from aiolumagen import LumagenState
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from pylumagen import LumagenState
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import LumagenCoordinator
@@ -13,7 +13,7 @@ from .coordinator import LumagenCoordinator
 def _displayable_serial(state: LumagenState | None) -> str | None:
     """The Lumagen's serial, or ``None`` when it isn't worth showing.
 
-    ``!S01`` reports a serial that some units fill with zeros. pylumagen
+    ``!S01`` reports a serial that some units fill with zeros. aiolumagen
     passes that through verbatim (it's what the device said), so deciding
     whether ``000000`` is worth putting on the device page is a
     presentation call and belongs here rather than in the library.

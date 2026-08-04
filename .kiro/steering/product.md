@@ -4,11 +4,11 @@
 
 ## Scope
 
-A thin wrapper over [`pylumagen`](../pylumagen). All Lumagen protocol work — parsing, command formatting, state tracking, polling, reconnection — lives in the library. This integration owns:
+A thin wrapper over [`aiolumagen`](../pylumagen) (the package name; the sibling repo is still named `pylumagen`). All Lumagen protocol work — parsing, command formatting, state tracking, polling, reconnection — lives in the library. This integration owns:
 
 - Home Assistant lifecycle (`async_setup_entry`, platform forwarding, unload)
 - Config flow (port selection from HA's serial dropdown, device-info validation via `ZQS01`)
-- Coordinator (wraps `pylumagen.LumagenClient`, surfaces state to entities)
+- Coordinator (wraps `aiolumagen.LumagenClient`, surfaces state to entities)
 - Entities: binary sensors, sensors, buttons, selects
 - Translations and strings
 

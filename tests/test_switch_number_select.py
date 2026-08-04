@@ -1,6 +1,6 @@
 """Tests for the new switch / number / select entities (Phase 1).
 
-These exercise the wiring between HA entity callbacks and the pylumagen
+These exercise the wiring between HA entity callbacks and the aiolumagen
 client. We build a minimal fake LumagenState + AsyncMock client and call
 the dispatch functions directly — entity-platform integration is exercised
 via test_full_setup below, but per-feature behavior is easier to pin by
@@ -12,8 +12,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pylumagen import LumagenState
-from pylumagen.state import SharpnessSensitivity
+from aiolumagen import LumagenState
+from aiolumagen.state import SharpnessSensitivity
 
 from custom_components.lumagen.coordinator import LumagenCoordinator
 from custom_components.lumagen.number import _set_fan_speed
@@ -219,7 +219,7 @@ async def test_number_set_fan_speed_dispatches_to_client() -> None:
     client = MagicMock()
     client.set_fan_speed = AsyncMock()
     await _set_fan_speed(client, LumagenState(), 4)
-    # Passed through in device units — pylumagen owns the wire conversion,
+    # Passed through in device units — aiolumagen owns the wire conversion,
     # so the integration must NOT pre-adjust the value here.
     client.set_fan_speed.assert_awaited_once_with(4)
 

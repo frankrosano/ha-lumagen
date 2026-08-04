@@ -20,6 +20,7 @@ import logging
 from typing import Any
 
 import voluptuous as vol
+from aiolumagen import LumagenConnectionError, LumagenError
 from homeassistant.components import usb
 from homeassistant.components.usb import SerialDevice, USBDevice
 from homeassistant.config_entries import (
@@ -38,7 +39,6 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
 )
-from pylumagen import LumagenConnectionError, LumagenError
 
 from . import coordinator as _coordinator
 from .const import (

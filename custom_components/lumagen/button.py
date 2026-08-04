@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from aiolumagen import LumagenClient, Misc, Navigation, Power
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import LumagenClient, Misc, Navigation, Power
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -25,7 +25,7 @@ class LumagenButtonDescription(ButtonEntityDescription):
 def _cmd(command: str) -> Callable[[LumagenClient], Awaitable[None]]:
     """Build a press-fn that sends one wire command (no CR).
 
-    Pass a member of pylumagen's command enums, never a bare literal — see
+    Pass a member of aiolumagen's command enums, never a bare literal — see
     that module's note on the case-collision pairs. The parameter is typed
     ``str`` because the enums are ``StrEnum``, so members satisfy it
     directly.
@@ -91,7 +91,7 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
     # No "Menu off" (`!`) or "HDR setup" (`Y`) buttons: on this hardware they
     # duplicate Exit (`X`) and Left (`<`) respectively, so they were two extra
     # entities for no extra capability. The raw commands remain reachable via
-    # the send_raw_command service, and pylumagen still exposes them as
+    # the send_raw_command service, and aiolumagen still exposes them as
     # Navigation.MENU_OFF / Misc.HDR_SETUP.
     LumagenButtonDescription(
         key="test_pattern",

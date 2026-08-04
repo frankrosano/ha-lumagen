@@ -15,7 +15,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pylumagen import LumagenState
+from aiolumagen import LumagenState
 
 from custom_components.lumagen.remote import _COMMANDS, LumagenRemote
 

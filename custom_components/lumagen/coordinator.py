@@ -1,6 +1,6 @@
-"""DataUpdateCoordinator wrapping pylumagen's LumagenClient.
+"""DataUpdateCoordinator wrapping aiolumagen's LumagenClient.
 
-pylumagen owns its own poll loop and pushes state via a subscribe callback.
+aiolumagen owns its own poll loop and pushes state via a subscribe callback.
 This coordinator is push-first — ``update_interval`` is ``None`` — so the
 only job of :meth:`_async_update_data` is to seed the initial state during
 ``async_config_entry_first_refresh``. Everything after that lands via
@@ -12,11 +12,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pylumagen import (
+from aiolumagen import (
     HdrGammaMode,
     LumagenClient,
     LumagenConnectionError,
@@ -25,6 +21,10 @@ from pylumagen import (
     LumagenTransport,
     SharpnessSensitivity,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN
 
@@ -79,7 +79,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         self._last_sharpness_sensitivity: SharpnessSensitivity | None = None
 
     async def _async_setup(self) -> None:
-        """Start the pylumagen client; called once by the coordinator.
+        """Start the aiolumagen client; called once by the coordinator.
 
         Errors here become ``ConfigEntryNotReady`` automatically — HA will
         retry setup on an exponential backoff. The subscription is wired
@@ -89,8 +89,8 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         loops are expected, not bugs.
 
         After the handshake, we kick off queries for state that isn't part
-        of pylumagen's default startup sequence (sharpness, game mode,
-        auto-aspect status). These aren't included in pylumagen's handshake
+        of aiolumagen's default startup sequence (sharpness, game mode,
+        auto-aspect status). These aren't included in aiolumagen's handshake
         because not every consumer wants them; ha-lumagen entities do, so
         we ask for them here. Errors are tolerated — a slow Lumagen will
         still respond to the next 60s poll cycle, and the entities will
@@ -182,7 +182,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
     async def _async_update_data(self) -> LumagenState:
         """Seed the initial data after ``start()``.
 
-        pylumagen fires the callback each time anything changes, so by the
+        aiolumagen fires the callback each time anything changes, so by the
         time this method runs after ``_async_setup`` we already have a
         populated snapshot. The client's own poll loop handles ongoing
         freshness — ``update_interval`` is ``None`` here so this function
@@ -204,14 +204,14 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
     def _on_state_update(
         self, state: LumagenState, _codes: tuple[str, ...]
     ) -> None:
-        """Push-side path: pylumagen -> coordinator -> entities."""
+        """Push-side path: aiolumagen -> coordinator -> entities."""
         self.async_set_updated_data(state)
 
 
 def _stale_timeout_for(poll_interval: float) -> float:
     """Pick a staleness timeout that can't false-positive at this poll rate.
 
-    pylumagen requires ``stale_timeout`` to exceed the longest poll interval
+    aiolumagen requires ``stale_timeout`` to exceed the longest poll interval
     — it checks staleness right after sending a query, before the reply can
     arrive, so a timeout shorter than one cycle would trip a reconnect every
     cycle (it raises ValueError rather than let that happen).

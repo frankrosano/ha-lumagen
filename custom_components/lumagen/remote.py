@@ -28,6 +28,7 @@ import asyncio
 from collections.abc import Iterable
 from typing import Any
 
+from aiolumagen import Aspect, Input, Memory, Misc, Navigation, Power
 from homeassistant.components.remote import (
     ATTR_DELAY_SECS,
     ATTR_NUM_REPEATS,
@@ -37,13 +38,12 @@ from homeassistant.components.remote import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import Aspect, Input, Memory, Misc, Navigation, Power
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
 
 # Friendly command name -> Lumagen wire command (no CR). Wire values come
-# from pylumagen's command enums, which are the single source of truth for
+# from aiolumagen's command enums, which are the single source of truth for
 # them — do not re-type the literals here. Anything not listed is sent
 # verbatim, so the remote doubles as an escape hatch for one-shot commands
 # the integration doesn't name (CR-terminated commands excepted — use the

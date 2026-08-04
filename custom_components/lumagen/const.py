@@ -11,7 +11,7 @@ MANUFACTURER: Final = "Lumagen, Inc."
 
 CONF_URL: Final = "url"
 
-# How often pylumagen polls the device, in seconds. Most state arrives via
+# How often aiolumagen polls the device, in seconds. Most state arrives via
 # the Lumagen's Full v5 push (`!I25`) in real time, but a handful of fields
 # — sharpness, game mode, auto aspect, display Rec.2020 and source HDR
 # metadata — are never pushed; the device only answers explicit queries for
@@ -27,7 +27,7 @@ CONF_URL: Final = "url"
 # device is on, a cycle issues six queries (ZQI25 plus the five secondary
 # ones) totalling a few hundred bytes with replies — well under 2% of a
 # 9600-baud link's capacity at this cadence. While the device is off,
-# pylumagen only issues the single power query per cycle.
+# aiolumagen only issues the single power query per cycle.
 CONF_POLL_INTERVAL: Final = "poll_interval"
 DEFAULT_POLL_INTERVAL: Final = 15
 MIN_POLL_INTERVAL: Final = 5

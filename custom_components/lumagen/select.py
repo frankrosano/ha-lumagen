@@ -5,12 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from homeassistant.components.select import SelectEntity, SelectEntityDescription
-from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import (
+from aiolumagen import (
     Aspect,
     HdrGammaMode,
     LumagenClient,
@@ -18,6 +13,11 @@ from pylumagen import (
     Memory,
     SharpnessSensitivity,
 )
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -50,7 +50,7 @@ class LumagenSelectDescription(SelectEntityDescription):
 # --- Aspect ratio (existing) ---
 # Aspect labels match the Lumagen manual. Order matches the old ESPHome YAML
 # so existing dashboards/automations don't need re-labeling. Wire commands
-# come from pylumagen's Aspect enum — never re-type the literals here (`w`
+# come from aiolumagen's Aspect enum — never re-type the literals here (`w`
 # is 16:9 and `W` is 2.35, so a case slip is a silently wrong preset).
 _ASPECT_COMMANDS: dict[str, Aspect] = {
     "4:3": Aspect.RATIO_4_3,

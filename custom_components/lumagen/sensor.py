@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from aiolumagen import Colorspace, HdrStatus, InputStatus, LumagenState, SourceMode
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -15,7 +16,6 @@ from homeassistant.const import EntityCategory, UnitOfFrequency
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from pylumagen import Colorspace, HdrStatus, InputStatus, LumagenState, SourceMode
 
 from .coordinator import LumagenConfigEntry
 from .entity import LumagenBaseEntity

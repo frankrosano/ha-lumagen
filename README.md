@@ -2,7 +2,7 @@
 
 Home Assistant custom integration for a [Lumagen Radiance Pro](https://www.lumagen.com/) video processor.
 
-This integration is a thin wrapper over [`pylumagen`](../pylumagen). All protocol work — parsing, state tracking, commands — lives in the library; the integration adds HA lifecycle, entities, and a config flow.
+This integration is a thin wrapper over [`aiolumagen`](../pylumagen) (the library's package name; the git repo is still named `pylumagen`). All protocol work — parsing, state tracking, commands — lives in the library; the integration adds HA lifecycle, entities, and a config flow.
 
 ## Topology
 
@@ -51,11 +51,11 @@ Direct RS-232 (cabled from your HA host to the Lumagen's DB9) also works — the
 
 ### A note on `aioesphomeapi`
 
-This integration requires plain `pylumagen`, deliberately **not**
-`pylumagen[esphome]`. The ESPHome serial transport needs `aioesphomeapi`, but
+This integration requires plain `aiolumagen`, deliberately **not**
+`aiolumagen[esphome]`. The ESPHome serial transport needs `aioesphomeapi`, but
 Home Assistant already ships it — pinned exactly — for its own ESPHome
 integration, and installs custom-integration requirements into the same
-site-packages. If `pylumagen` also declared it (necessarily at a looser
+site-packages. If `aiolumagen` also declared it (necessarily at a looser
 range), the resolver could move HA's pinned version; because `aioesphomeapi`
 is a Cython package, that leaves mismatched `.so` files behind and breaks the
 ESPHome integration with errors like `APIConnection size changed` or
@@ -75,7 +75,7 @@ For real-time updates rather than polling, enable Full v5 reporting on the Lumag
 
 The integration works either way; this just makes it snappier. Leaving it at **Full v4** also works — those pushes still parse — you just don't get power and memory changes in real time.
 
-Separately, note that Full v5 is a **firmware requirement**, not just a menu preference: `pylumagen` polls status exclusively with `ZQI25`, so firmware predating it isn't supported. A device on such firmware won't show an error, its status sensors simply stay unknown; the library logs a warning at startup when it detects that case.
+Separately, note that Full v5 is a **firmware requirement**, not just a menu preference: `aiolumagen` polls status exclusively with `ZQI25`, so firmware predating it isn't supported. A device on such firmware won't show an error, its status sensors simply stay unknown; the library logs a warning at startup when it detects that case.
 
 ## Exposed entities
 

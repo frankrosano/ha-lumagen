@@ -14,7 +14,7 @@
   first set, and a change made on the device itself can't be seen. We
   deliberately don't seed a fake starting value — that would claim to
   report device state we don't have. The range is in the device's own
-  units (what its menu displays); pylumagen converts to the 0-based wire
+  units (what its menu displays); aiolumagen converts to the 0-based wire
   value.
 """
 
@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from aiolumagen import LumagenClient, LumagenState
 from homeassistant.components.number import (
     NumberEntity,
     NumberEntityDescription,
@@ -31,7 +32,6 @@ from homeassistant.components.number import (
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import LumagenClient, LumagenState
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -78,7 +78,7 @@ NUMBERS: tuple[LumagenNumberDescription, ...] = (
         key="fan_speed",
         translation_key="fan_speed",
         # 1-10 to match the number the Lumagen shows in its own menu. The
-        # wire value is one lower; pylumagen's fan_speed_command owns that
+        # wire value is one lower; aiolumagen's fan_speed_command owns that
         # conversion, so this range is in device units.
         native_min_value=1,
         native_max_value=10,
@@ -121,7 +121,7 @@ async def async_setup_entry(
 
 
 class LumagenNumber(LumagenBaseEntity, NumberEntity):
-    """Bidirectional number backed by pylumagen state + setter.
+    """Bidirectional number backed by aiolumagen state + setter.
 
     The HDR mapping max-nits entry is a special case: the underlying
     ZY417 command pairs the nits value with a gamma-mode select. Both

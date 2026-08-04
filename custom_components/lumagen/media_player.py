@@ -34,6 +34,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from aiolumagen import SourceMode
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
@@ -41,7 +42,6 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import SourceMode
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -51,7 +51,7 @@ from .entity import LumagenBaseEntity
 # shows as no current selection.
 #
 # Source names come from the Lumagen's configured input labels
-# (state.input_labels, populated by pylumagen's query_input_labels). Until
+# (state.input_labels, populated by aiolumagen's query_input_labels). Until
 # those land — or for any input the device didn't label — we fall back to
 # "Input N". source_list and the reverse label->input lookup are derived from
 # coordinator state on each read, so a relabel (or the first label arrival)

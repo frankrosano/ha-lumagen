@@ -25,11 +25,11 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from aiolumagen import Aspect, LumagenClient, LumagenState
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from pylumagen import Aspect, LumagenClient, LumagenState
 
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 from .entity import LumagenBaseEntity
@@ -111,7 +111,7 @@ async def async_setup_entry(
 
 
 class LumagenSwitch(LumagenBaseEntity, SwitchEntity):
-    """Bidirectional switch backed by a pylumagen state field + setter."""
+    """Bidirectional switch backed by a aiolumagen state field + setter."""
 
     entity_description: LumagenSwitchDescription
 

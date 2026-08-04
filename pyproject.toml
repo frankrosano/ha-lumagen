@@ -17,21 +17,25 @@ dev = [
     # serialx.platforms.serial_esphome at module scope, which imports
     # aioesphomeapi — yet usb/manifest.json doesn't list it (HA relies on the
     # `esphome` integration having installed it). Nothing in our own
-    # dependency tree pulls it any more: pylumagen deliberately dropped the
+    # dependency tree pulls it any more: aiolumagen deliberately dropped the
     # serialx[esphome] extra so it can't move the version HA pins for its
     # ESPHome integration. So the test env has to ask for it directly, or
     # importing `usb` fails at collection.
     "aioesphomeapi",
-    # We import from pylumagen in the integration code, so it must be
-    # resolvable from the test env.
-    "pylumagen",
+    # We import from aiolumagen in the integration code, so it must be
+    # resolvable from the test env. (aiolumagen is the renamed pylumagen —
+    # same git repo, new distribution/import name; see the sibling repo's
+    # README for why.)
+    "aiolumagen",
     "ruff>=0.7",
     "mypy>=1.11",
 ]
 
 [tool.uv.sources]
-# During development, point at the sibling pylumagen repo by path.
-pylumagen = { path = "../pylumagen", editable = true }
+# During development, point at the sibling pylumagen repo by path. The repo
+# directory is still named "pylumagen" (unrenamed); only the distribution
+# it publishes changed name to "aiolumagen".
+aiolumagen = { path = "../pylumagen", editable = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
