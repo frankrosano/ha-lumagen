@@ -13,6 +13,6 @@
   "loggers": ["aiolumagen"],
   "quality_scale": "bronze",
   "requirements": [
-    "aiolumagen@git+https://github.com/frankrosano/pylumagen.git@v0.4.0"
+    "aiolumagen@git+https://github.com/frankrosano/aiolumagen.git@v0.4.0"
   ]
 }

@@ -5,7 +5,7 @@ send_raw_command:
     or experimental commands that aren't exposed as entities — for
     example HDR test-pattern info frames (ZY540-548) used during display
     calibration. Refer to Tip0011_RS232CommandInterface for the full
-    command vocabulary. Responses (if any) are parsed by pylumagen and
+    command vocabulary. Responses (if any) are parsed by aiolumagen and
     update the relevant state fields automatically.
   # Deliberately no `target:` block. A target declared there is mandatory in
   # the UI, which made this service impossible to call for the normal

@@ -2,7 +2,7 @@
 
 Home Assistant custom integration for a [Lumagen Radiance Pro](https://www.lumagen.com/) video processor.
 
-This integration is a thin wrapper over [`aiolumagen`](../pylumagen) (the library's package name; the git repo is still named `pylumagen`). All protocol work — parsing, state tracking, commands — lives in the library; the integration adds HA lifecycle, entities, and a config flow.
+This integration is a thin wrapper over [`aiolumagen`](../aiolumagen). All protocol work — parsing, state tracking, commands — lives in the library; the integration adds HA lifecycle, entities, and a config flow.
 
 ## Topology
 

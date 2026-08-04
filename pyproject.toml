@@ -23,19 +23,17 @@ dev = [
     # importing `usb` fails at collection.
     "aioesphomeapi",
     # We import from aiolumagen in the integration code, so it must be
-    # resolvable from the test env. (aiolumagen is the renamed pylumagen —
-    # same git repo, new distribution/import name; see the sibling repo's
-    # README for why.)
+    # resolvable from the test env. (aiolumagen was renamed from pylumagen
+    # to avoid a PyPI collision with an unrelated published package — see
+    # the sibling repo's README for why.)
     "aiolumagen",
     "ruff>=0.7",
     "mypy>=1.11",
 ]
 
 [tool.uv.sources]
-# During development, point at the sibling pylumagen repo by path. The repo
-# directory is still named "pylumagen" (unrenamed); only the distribution
-# it publishes changed name to "aiolumagen".
-aiolumagen = { path = "../pylumagen", editable = true }
+# During development, point at the sibling aiolumagen repo by path.
+aiolumagen = { path = "../aiolumagen", editable = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

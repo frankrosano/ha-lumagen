@@ -39,7 +39,7 @@ ha-lumagen/
 - **`from __future__ import annotations`** at the top of every Python module.
 - **No protocol logic in the integration.** If you find yourself parsing an `!` response or formatting a `ZQ` query in `coordinator.py` or `button.py`, that logic belongs in `aiolumagen` instead.
 - **Coordinator with `always_update=False`.** `LumagenState` implements `__eq__` so the coordinator can skip redundant entity writes — preserve that behavior.
-- **Manifest `requirements` pins `aiolumagen` from git (the `pylumagen` repo URL).** During development, `[tool.uv.sources]` in the root `pyproject.toml` redirects to the sibling repo via path. End users always get the git pin.
+- **Manifest `requirements` pins `aiolumagen` from git.** During development, `[tool.uv.sources]` in the root `pyproject.toml` redirects to the sibling repo via path. End users always get the git pin.
 - **Entity unique_ids** must include the config-entry-id or device-identifying string from the Lumagen's `ZQS01` response, never the friendly name (which the user can change).
 - **Strings.** UI-facing copy goes in `strings.json` and the matching `translations/en.json`. Don't hardcode user-visible strings in Python.
 
@@ -47,13 +47,13 @@ ha-lumagen/
 
 - Tests use `pytest-homeassistant-custom-component`, which spins up a fake HA core. Fixtures live in `tests/conftest.py`.
 - `asyncio_mode = "auto"` — async tests don't need the `@pytest.mark.asyncio` decorator.
-- Mock `aiolumagen.LumagenClient` rather than running real serial I/O. The protocol layer is already tested in the `pylumagen` repo (`aiolumagen` package); here, test HA-side wiring (config flow, coordinator translation, entity attributes).
+- Mock `aiolumagen.LumagenClient` rather than running real serial I/O. The protocol layer is already tested in the `aiolumagen` repo; here, test HA-side wiring (config flow, coordinator translation, entity attributes).
 
 ## Where Things Live (Cross-Repo)
 
 | Concern | Location |
 |---|---|
-| Bytes on the wire, command formatting, state parsing | `aiolumagen` (`pylumagen` repo) |
+| Bytes on the wire, command formatting, state parsing | `aiolumagen` |
 | HA entities, config flow, coordinator, translations | This repo |
 | ESP32 firmware bridging RS-232 to network | `esphome-lumagen` |
 | Lumagen protocol PDFs, Crestron driver, Pronto codes | `esphome-lumagen/References/` (gitignored) |

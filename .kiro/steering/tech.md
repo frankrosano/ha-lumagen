@@ -18,10 +18,10 @@
 ## Runtime Dependency
 
 ```
-aiolumagen@git+https://github.com/frankrosano/pylumagen.git@main
+aiolumagen@git+https://github.com/frankrosano/aiolumagen.git@main
 ```
 
-Note the package name (`aiolumagen`) differs from the git repo it's pinned to (`pylumagen`) — renamed to avoid a PyPI collision with an unrelated published package; see the sibling repo's steering docs. The integration imports from `aiolumagen` directly (client, state, exceptions, enums). During development, `pyproject.toml` overrides this with `[tool.uv.sources]` pointing at the sibling `../pylumagen` repo via `editable = true`.
+The integration imports from `aiolumagen` directly (client, state, exceptions, enums). During development, `pyproject.toml` overrides this with `[tool.uv.sources]` pointing at the sibling `../aiolumagen` repo via `editable = true`.
 
 ## Dev Dependencies
 
@@ -30,7 +30,7 @@ In the `dev` group of `pyproject.toml`:
 - `pytest-homeassistant-custom-component >= 0.13` — pulls in HA core + pytest fixtures pinned to a real release
 - `aiousbwatcher` — pulled explicitly because HA's `usb` integration imports it (it's an optional extra on the `homeassistant` package)
 - `aioesphomeapi` — also for `usb`: its `serial_proxy_stub` imports `serialx.platforms.serial_esphome` at module scope, which imports `aioesphomeapi`, yet `usb/manifest.json` doesn't declare it (HA relies on the `esphome` integration having installed it). `aiolumagen` deliberately doesn't pull it either, so without this entry importing `usb` fails at test collection.
-- `aiolumagen` (editable, via uv source override pointing at the sibling `pylumagen` repo) — needed because integration code imports it
+- `aiolumagen` (editable, via uv source override pointing at the sibling `aiolumagen` repo) — needed because integration code imports it
 - `ruff >= 0.7`, `mypy >= 1.11`
 
 ### The tested HA version floats, on purpose
@@ -70,7 +70,7 @@ uv run ruff format .   # format
 uv run mypy custom_components/lumagen   # type check
 ```
 
-To test against a real Lumagen during development, point the integration at the sibling `pylumagen` checkout (already wired via `[tool.uv.sources]`, keyed by the `aiolumagen` package name) and copy `custom_components/lumagen/` into your HA config dir's `custom_components/`.
+To test against a real Lumagen during development, point the integration at the sibling `aiolumagen` checkout (already wired via `[tool.uv.sources]`) and copy `custom_components/lumagen/` into your HA config dir's `custom_components/`.
 
 ## Exception Handling Contract (from `aiolumagen`)
 
