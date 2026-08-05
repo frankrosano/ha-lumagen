@@ -110,10 +110,12 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         # entity availability still works without them.
         #
         # query_input_labels is intentionally last: it serializes 8 label
-        # queries with a settle delay (~1s total), so running it after the
-        # quick single-shot queries lets those populate first. Labels are
-        # read once here; a mid-session relabel on the device won't refresh
-        # until the integration reloads.
+        # queries, awaiting each !S1x reply before sending the next, so it's
+        # the slowest of these even though it now finishes at device latency
+        # rather than on a fixed timer. Running it after the quick
+        # single-shot queries lets those populate first. Labels are read once
+        # here; a mid-session relabel on the device won't refresh until the
+        # integration reloads.
         for query in (
             self.client.query_sharpness,
             self.client.query_game_mode,
