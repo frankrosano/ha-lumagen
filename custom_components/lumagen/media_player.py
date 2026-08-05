@@ -64,19 +64,23 @@ def _fallback_label(number: int) -> str:
     return f"Input {number}"
 
 
-def _fmt_rate(rate: str | None) -> str | None:
-    """Normalize a Lumagen vertical-rate string (``060``) to a bare Hz number.
+def _fmt_rate(hz: float | None) -> str | None:
+    """Compact Hz for a card label: ``60.0`` -> ``60``, ``59.94`` -> ``59.94``.
 
-    Mirrors the sensor's parsing intent: strip the zero-padding but do not
-    divide by ten (the tenths-of-a-hertz firmware variant is rare — see
-    ``sensor._as_float``). Returns ``None`` for missing/unparseable input.
+    Takes the rate aiolumagen already decoded, not the raw wire code. This used
+    to run ``int()`` over the code and label a 59.94 Hz signal "59" — the codes
+    are the *truncated* integer part of the rate, so every NTSC-family rate
+    came out one below nominal. Keeping the fractional part matters for this
+    audience specifically: 59.94 vs 60 is the distinction worth seeing.
+
+    Trailing zeros are dropped so integer rates stay short.
     """
-    if not rate:
+    if hz is None:
         return None
-    try:
-        return str(int(rate))
-    except (TypeError, ValueError):
-        return rate
+    rounded = round(hz, 2)
+    if rounded == int(rounded):
+        return str(int(rounded))
+    return f"{rounded:g}"
 
 
 def _scan_letter(mode: SourceMode | None) -> str | None:
@@ -92,11 +96,11 @@ def _scan_letter(mode: SourceMode | None) -> str | None:
 
 
 def _format_signal(
-    resolution: str | None, rate: str | None, scan: str | None = None
+    resolution: str | None, rate: float | None, scan: str | None = None
 ) -> str | None:
-    """Combine resolution + scan + refresh rate into one label, e.g. ``2160p59``.
+    """Combine resolution + scan + refresh rate into one label, e.g. ``2160p59.94``.
 
-    Without the scan letter the digits would run together (``216059``); the
+    Without the scan letter the digits would run together (``216059.94``); the
     letter is what separates them. Degrades gracefully: resolution alone ->
     ``2160``; rate alone -> ``60Hz``; neither -> ``None``.
     """
@@ -204,11 +208,18 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         if not state.power_on:
             return None
         source = _format_signal(
-            state.source_resolution, state.source_vrate, _scan_letter(state.source_mode)
+            state.source_resolution,
+            state.source_refresh_hz,
+            _scan_letter(state.source_mode),
         )
-        # The Radiance Pro deinterlaces and outputs progressive; there is no
-        # reported output scan-mode field, so label the output "p".
-        output = _format_signal(state.output_resolution, state.output_vrate, "p")
+        # Output scan mode is reported (field H of !I24/!I25) — this used to
+        # hardcode "p" on the assumption that it wasn't, which was true only of
+        # the parser, not the protocol.
+        output = _format_signal(
+            state.output_resolution,
+            state.output_refresh_hz,
+            _scan_letter(state.output_scan_mode),
+        )
         if source and output:
             return f"{source} → {output}"
         return source or output
@@ -227,9 +238,11 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
         state = self.coordinator.data
         return {
             "source_resolution": state.source_resolution,
-            "source_refresh_rate": state.source_vrate,
+            # Decoded Hz, not the raw wire code: an attribute called
+            # "refresh_rate" reporting "059" for 59.94 Hz was simply wrong.
+            "source_refresh_rate": state.source_refresh_hz,
             "output_resolution": state.output_resolution,
-            "output_refresh_rate": state.output_vrate,
+            "output_refresh_rate": state.output_refresh_hz,
             "hdr_status": state.hdr_status.value if state.hdr_status else None,
             "colorspace": state.colorspace.value if state.colorspace else None,
         }

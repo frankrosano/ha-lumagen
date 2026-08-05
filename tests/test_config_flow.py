@@ -51,6 +51,11 @@ def _make_client_mock(*, model: str = "RadiancePro", firmware: str = "030225") -
     client.connected = True
     client.subscribe = MagicMock(return_value=lambda: None)
     client.state = LumagenState(model=model, firmware=firmware)
+    # Validation awaits the device-info reply rather than polling state, so the
+    # mock has to return the !S01 payload the real client would.
+    client.query_device_info = AsyncMock(
+        return_value=f"{model},{firmware},1018,000000"
+    )
     return client
 
 
@@ -129,15 +134,47 @@ async def test_cannot_connect_surfaces_error(hass: HomeAssistant) -> None:
     assert result["errors"] == {"base": "cannot_connect"}
 
 
-async def test_no_response_when_device_info_stays_empty(hass: HomeAssistant) -> None:
-    """If ZQS01 never lands, validation times out with no_response."""
+async def test_no_response_when_device_info_never_arrives(hass: HomeAssistant) -> None:
+    """A port that opens but never answers reports no_response.
+
+    The client raises the builtin TimeoutError; no wall-clock wait is needed
+    here any more because validation awaits a response instead of spinning on
+    state until a deadline.
+    """
     client = MagicMock()
     client.start = AsyncMock()
     client.stop = AsyncMock()
-    client.state = LumagenState()  # model=None forever
+    client.state = LumagenState()
+    client.query_device_info = AsyncMock(side_effect=TimeoutError)
     with (
         _patch_scan([_fake_usb_device()]),
-        patch("custom_components.lumagen.config_flow.VALIDATION_TIMEOUT", 0.1),
+        patch(CLIENT_FACTORY, new=AsyncMock(return_value=client)),
+    ):
+        init = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            init["flow_id"], {CONF_URL: FAKE_URL}
+        )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "no_response"}
+
+
+async def test_no_response_when_device_info_answers_empty(hass: HomeAssistant) -> None:
+    """An empty payload must not pass validation.
+
+    The Lumagen echoes *any* syntactically valid query with an empty payload,
+    so `!S01,` proves far less than it looks like it does — certainly not that
+    the thing on the far end can identify itself. Accepting it would let a
+    wrong-but-reachable port create an entry whose device page has no model.
+    """
+    client = MagicMock()
+    client.start = AsyncMock()
+    client.stop = AsyncMock()
+    client.state = LumagenState()
+    client.query_device_info = AsyncMock(return_value="")
+    with (
+        _patch_scan([_fake_usb_device()]),
         patch(CLIENT_FACTORY, new=AsyncMock(return_value=client)),
     ):
         init = await hass.config_entries.flow.async_init(

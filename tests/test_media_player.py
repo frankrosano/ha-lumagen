@@ -191,17 +191,21 @@ def test_extra_state_attributes_signal_summary() -> None:
     state = LumagenState(
         source_resolution="1080p",
         source_vrate="060",
+        source_refresh_hz=60.0,
         output_resolution="2160p",
         output_vrate="060",
+        output_refresh_hz=60.0,
         hdr_status=HdrStatus.HDR,
         colorspace=Colorspace.REC_2020,
     )
     entity, _ = _media_player(state)
     assert entity.extra_state_attributes == {
         "source_resolution": "1080p",
-        "source_refresh_rate": "060",
+        # Decoded Hz, not the raw "060" wire code — an attribute named
+        # refresh_rate must report a rate.
+        "source_refresh_rate": 60.0,
         "output_resolution": "2160p",
-        "output_refresh_rate": "060",
+        "output_refresh_rate": 60.0,
         "hdr_status": "HDR",
         "colorspace": "Rec.2020",
     }
@@ -224,35 +228,88 @@ def test_extra_state_attributes_none_when_unobserved() -> None:
 
 
 def test_media_title_signal_path() -> None:
-    """Scan letter comes from source_mode; zero-padding on the rate is stripped.
+    """Scan letter comes from the scan-mode field; the rate is the decoded Hz.
 
     Resolution fields are the bare line count (``2160``); the ``p``/``i`` is a
     separate field, so the letter is what keeps the digits from running
-    together (``216059`` -> ``2160p59``).
+    together (``216059.94`` -> ``2160p59.94``).
     """
     entity, _ = _media_player(
         LumagenState(
             power_on=True,
             source_resolution="2160",
-            source_vrate="059",
+            source_refresh_hz=59.94,
             source_mode=SourceMode.PROGRESSIVE,
             output_resolution="2160",
-            output_vrate="059",
+            output_refresh_hz=59.94,
+            output_scan_mode=SourceMode.PROGRESSIVE,
         )
     )
-    assert entity.media_title == "2160p59 → 2160p59"
+    assert entity.media_title == "2160p59.94 → 2160p59.94"
 
 
-def test_media_title_interlaced_source_progressive_output() -> None:
-    """Source scan comes from source_mode; the output is always labeled progressive."""
+def test_media_title_keeps_5994_distinct_from_60() -> None:
+    """Regression: the card used to label a 59.94 Hz signal "59".
+
+    It formatted the raw wire code, which is the truncated integer part of the
+    rate. 59.94 vs 60 is precisely the distinction this audience is looking at
+    the card to check, so collapsing it (either to 59 or to a rounded 60) is
+    the wrong trade.
+    """
+    entity, _ = _media_player(
+        LumagenState(
+            power_on=True,
+            source_resolution="2160",
+            source_refresh_hz=59.94,
+            source_mode=SourceMode.PROGRESSIVE,
+        )
+    )
+    assert entity.media_title == "2160p59.94"
+
+    entity, _ = _media_player(
+        LumagenState(
+            power_on=True,
+            source_resolution="2160",
+            source_refresh_hz=60.0,
+            source_mode=SourceMode.PROGRESSIVE,
+        )
+    )
+    # Integer rates stay short — no trailing ".0".
+    assert entity.media_title == "2160p60"
+
+
+def test_media_title_uses_the_reported_output_scan_mode() -> None:
+    """Output scan is read, not assumed.
+
+    This hardcoded "p" on the premise that the Lumagen doesn't report output
+    scan mode. It does — field H of !I24/!I25 — the parser just wasn't reading
+    it. An interlaced output now labels itself correctly.
+    """
     entity, _ = _media_player(
         LumagenState(
             power_on=True,
             source_resolution="1080",
-            source_vrate="060",
+            source_refresh_hz=60.0,
+            source_mode=SourceMode.INTERLACED,
+            output_resolution="1080",
+            output_refresh_hz=60.0,
+            output_scan_mode=SourceMode.INTERLACED,
+        )
+    )
+    assert entity.media_title == "1080i60 → 1080i60"
+
+
+def test_media_title_interlaced_source_progressive_output() -> None:
+    """The common case: the Radiance Pro deinterlaces to a progressive output."""
+    entity, _ = _media_player(
+        LumagenState(
+            power_on=True,
+            source_resolution="1080",
+            source_refresh_hz=60.0,
             source_mode=SourceMode.INTERLACED,
             output_resolution="2160",
-            output_vrate="060",
+            output_refresh_hz=60.0,
+            output_scan_mode=SourceMode.PROGRESSIVE,
         )
     )
     assert entity.media_title == "1080i60 → 2160p60"
@@ -264,7 +321,7 @@ def test_media_title_source_only() -> None:
         LumagenState(
             power_on=True,
             source_resolution="1080",
-            source_vrate="024",
+            source_refresh_hz=24.0,
             source_mode=SourceMode.PROGRESSIVE,
         )
     )
@@ -274,13 +331,13 @@ def test_media_title_source_only() -> None:
 def test_media_title_source_scan_unknown_omits_letter() -> None:
     """Before source_mode is observed, no letter is inserted (digits run together)."""
     entity, _ = _media_player(
-        LumagenState(power_on=True, source_resolution="2160", source_vrate="059")
+        LumagenState(power_on=True, source_resolution="2160", source_refresh_hz=59.94)
     )
-    assert entity.media_title == "216059"
+    assert entity.media_title == "216059.94"
 
 
 def test_media_title_rate_only_gets_hz_suffix() -> None:
-    entity, _ = _media_player(LumagenState(power_on=True, output_vrate="060"))
+    entity, _ = _media_player(LumagenState(power_on=True, output_refresh_hz=60.0))
     assert entity.media_title == "60Hz"
 
 

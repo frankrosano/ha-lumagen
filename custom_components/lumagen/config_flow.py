@@ -14,7 +14,6 @@ matter of re-picking from the dropdown.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 from typing import Any
@@ -195,15 +194,32 @@ async def _validate_url(url: str) -> tuple[str | None, str | None]:
             _LOGGER.debug("Lumagen URL %s reported an error: %s", url, err)
             return "unknown", None
 
-        # Wait up to VALIDATION_TIMEOUT for at least !S01 (model/firmware).
-        # The library's startup sequence fires ZQS01 for us.
+        # Ask for device info and await the reply. This replaced a 0.1s poll
+        # over client.state.model wrapped in asyncio.timeout — the library now
+        # correlates a query to its response, so "did a Lumagen answer on this
+        # port?" is a value we can await instead of a condition to spin on.
+        # The wire code stays inside aiolumagen; this side never spells ZQS01.
         try:
-            async with asyncio.timeout(VALIDATION_TIMEOUT):
-                while client.state.model is None:
-                    await asyncio.sleep(0.1)
+            device_info = await client.query_device_info(timeout=VALIDATION_TIMEOUT)
         except TimeoutError:
-            _LOGGER.debug("Lumagen at %s did not answer ZQS01 within %.1fs",
-                          url, VALIDATION_TIMEOUT)
+            _LOGGER.debug(
+                "Lumagen at %s did not answer the device-info query within %.1fs",
+                url,
+                VALIDATION_TIMEOUT,
+            )
+            return "no_response", None
+        except LumagenConnectionError as err:
+            # The port opened but dropped before answering.
+            _LOGGER.debug("Lumagen URL %s disconnected during validation: %s", url, err)
+            return "cannot_connect", None
+
+        # A reply is not automatically proof of a Lumagen that can identify
+        # itself: the device answers *any* syntactically valid query by
+        # echoing the code with an empty payload. Requiring content keeps the
+        # strictness the previous state-polling check had, which only accepted
+        # a port once a model had actually been parsed.
+        if not device_info:
+            _LOGGER.debug("Lumagen at %s answered the device-info query empty", url)
             return "no_response", None
 
         state = client.state
