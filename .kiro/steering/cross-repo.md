@@ -7,7 +7,7 @@ esphome-lumagen   →   aiolumagen   →   ha-lumagen
   (firmware)         (library)        (HA integration)
 ```
 
-**Naming note:** the library repo/package was renamed from `pylumagen` to `aiolumagen` (both the GitHub repo and the PyPI/import name) to avoid a collision with an unrelated `pylumagen` package already published on PyPI. If you see a stray `pylumagen` reference anywhere in these repos, it's stale — file it as a doc bug.
+**Naming note:** the library was formerly `pylumagen`, renamed to avoid a collision with an unrelated `pylumagen` package already published on PyPI. The rename covered everything — GitHub repo, clone path, distribution name and import name are all `aiolumagen`. A surviving `pylumagen` reference anywhere in these repos is stale; the only correct use of the old name is describing the rename itself.
 
 ## Boundary Enforcement (the most important rules)
 
