@@ -12,6 +12,7 @@ from aiolumagen import (
     LumagenState,
     Memory,
     SharpnessSensitivity,
+    SubtitleShift,
 )
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
@@ -28,12 +29,16 @@ class LumagenSelectDescription(SelectEntityDescription):
     """Bidirectional select description.
 
     ``current_fn`` reads the current option label from coordinator state.
-    Returning ``None`` means "fall back to the entity's optimistic value"
-    (used for write-only knobs like subtitle shift that have no query).
+    Returning ``None`` means "fall back to the entity's optimistic value",
+    which covers both knobs the Lumagen never reports (HDR gamma mode) and
+    ones it reports only on some firmware (subtitle shift).
 
     ``select_fn`` is given the client AND a snapshot of state at write
     time. State access is needed by compound-write commands like
     ``set_sharpness`` that must preserve other components' values.
+
+    Note the optimistic fallback is per-entity and in-memory, so it resets to
+    "unknown" on restart for anything the device won't report back.
 
     ``select_fn`` is ``None`` for the entries whose write path
     :meth:`LumagenSelect.async_select_option` handles itself (the
@@ -99,9 +104,18 @@ _SHARPNESS_SENSITIVITY_TO_WIRE: dict[str, SharpnessSensitivity] = {
 _SHARPNESS_WIRE_TO_LABEL = {v: k for k, v in _SHARPNESS_SENSITIVITY_TO_WIRE.items()}
 
 
-# --- Subtitle shift (write-only optimistic) ---
+# --- Subtitle shift (read-back where the firmware provides it) ---
+# There is no ZQ query for subtitle shift, so this was purely optimistic. The
+# Lumagen does appear to report it in the Full v5 status push, which lets the
+# dropdown reflect a change made with the device's own remote — but only on
+# firmware that appends that field. See _current_subtitle_shift.
 _SUBTITLE_SHIFT_OPTIONS = ("Off", "Small", "Large")
 _SUBTITLE_SHIFT_TO_LEVEL = {"Off": 0, "Small": 1, "Large": 2}
+_SUBTITLE_SHIFT_WIRE_TO_LABEL: dict[SubtitleShift, str] = {
+    SubtitleShift.OFF: "Off",
+    SubtitleShift.PERCENT_3: "Small",
+    SubtitleShift.PERCENT_6: "Large",
+}
 
 
 # --- HDR gamma mode (compound-write — pairs with hdr_mapping_max_nits) ---
@@ -172,6 +186,25 @@ def _current_sharpness_sensitivity(state: LumagenState) -> str | None:
     return _SHARPNESS_WIRE_TO_LABEL.get(state.sharpness_sensitivity)
 
 
+def _current_subtitle_shift(state: LumagenState) -> str | None:
+    """Device-reported subtitle shift, or ``None`` to keep the optimistic value.
+
+    Returning ``None`` is the descriptor's documented "fall back to what we
+    last wrote", so behaviour is unchanged on firmware that doesn't report
+    this: the dropdown still shows the last selection. Where the firmware
+    *does* report it, a change made with the Lumagen's own remote now shows
+    up here, which the optimistic-only path could never do.
+
+    The underlying field is empirically mapped rather than documented and is
+    absent on firmware 030225 (see aiolumagen's protocol module), which is
+    another reason the fallback matters — this must not regress the common
+    case to chase the uncommon one.
+    """
+    if state.subtitle_shift is None:
+        return None
+    return _SUBTITLE_SHIFT_WIRE_TO_LABEL.get(state.subtitle_shift)
+
+
 # --- Entity descriptors ---
 
 
@@ -207,9 +240,10 @@ SELECTS: tuple[LumagenSelectDescription, ...] = (
         translation_key="subtitle_shift",
         options=list(_SUBTITLE_SHIFT_OPTIONS),
         entity_category=EntityCategory.CONFIG,
-        # No query exists; current_fn always returns None and the entity
-        # shows the locally-tracked optimistic value instead.
-        current_fn=lambda _s: None,
+        # Reads the device's value when the firmware reports it, otherwise
+        # returns None and the entity shows the locally-tracked optimistic
+        # value — the previous behaviour.
+        current_fn=_current_subtitle_shift,
         select_fn=_select_subtitle_shift,
     ),
     LumagenSelectDescription(
@@ -241,7 +275,9 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
     """Bidirectional Lumagen dropdown.
 
     Falls back to a locally-tracked optimistic value when ``current_fn``
-    returns ``None`` (used for write-only selects like subtitle shift).
+    returns ``None`` — either because the Lumagen has no query for the
+    setting at all (HDR gamma mode) or because this firmware doesn't report
+    it (subtitle shift).
 
     The HDR gamma-mode entry is a special case: the underlying ZY417
     command pairs the gamma byte with a numeric max-nits value. Both

@@ -5,7 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from aiolumagen import Colorspace, HdrStatus, InputStatus, LumagenState, SourceMode
+from aiolumagen import (
+    AutoAspectStatus,
+    Colorspace,
+    HdrStatus,
+    InputStatus,
+    LumagenState,
+    SourceMode,
+)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -65,7 +72,14 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda s: _as_float(s.source_vrate),
+        value_fn=lambda s: s.source_refresh_hz,
+    ),
+    LumagenSensorDescription(
+        key="source_resolution_full",
+        translation_key="source_resolution_full",
+        value_fn=lambda s: _resolution_label(
+            s.source_resolution, s.source_width, s.source_mode
+        ),
     ),
     LumagenSensorDescription(
         key="source_aspect",
@@ -89,7 +103,19 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
         device_class=SensorDeviceClass.FREQUENCY,
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda s: _as_float(s.output_vrate),
+        value_fn=lambda s: s.output_refresh_hz,
+    ),
+    LumagenSensorDescription(
+        key="output_resolution_full",
+        translation_key="output_resolution_full",
+        value_fn=lambda s: _resolution_label(
+            s.output_resolution, s.output_width, s.output_scan_mode
+        ),
+    ),
+    LumagenSensorDescription(
+        key="output_aspect",
+        translation_key="output_aspect",
+        value_fn=lambda s: s.output_aspect,
     ),
     # --- Enum-backed status sensors ---
     LumagenSensorDescription(
@@ -119,6 +145,76 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=[sm.value for sm in SourceMode],
         value_fn=lambda s: s.source_mode.value if s.source_mode else None,
+    ),
+    LumagenSensorDescription(
+        key="output_scan_mode",
+        translation_key="output_scan_mode",
+        device_class=SensorDeviceClass.ENUM,
+        options=[sm.value for sm in SourceMode],
+        value_fn=lambda s: s.output_scan_mode.value if s.output_scan_mode else None,
+    ),
+    # --- Signal-path diagnostics (from the extended !I24/!I25 fields) ---
+    LumagenSensorDescription(
+        key="physical_input",
+        translation_key="physical_input",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.physical_input,
+    ),
+    # The detected/applied aspect pair is what makes auto-aspect behaviour
+    # explainable: source_aspect and content_aspect are what the Lumagen is
+    # *using*, these two are what it *saw*. A mismatch is the signature of a
+    # manual preset overriding detection.
+    LumagenSensorDescription(
+        key="detected_source_aspect",
+        translation_key="detected_source_aspect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.detected_source_aspect,
+    ),
+    LumagenSensorDescription(
+        key="detected_content_aspect",
+        translation_key="detected_content_aspect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.detected_content_aspect,
+    ),
+    LumagenSensorDescription(
+        key="active_outputs",
+        translation_key="active_outputs",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: _active_outputs_label(s.active_outputs),
+    ),
+    LumagenSensorDescription(
+        key="output_cms",
+        translation_key="output_cms",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.output_cms,
+    ),
+    LumagenSensorDescription(
+        key="output_style",
+        translation_key="output_style",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.output_style,
+    ),
+    LumagenSensorDescription(
+        key="input_config",
+        translation_key="input_config",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.input_config,
+    ),
+    # Tri-state counterpart to the auto_aspect switch, which can only say
+    # on/off. "Disabled" means configured but currently inhibited — a state
+    # the switch cannot represent.
+    #
+    # Reads "unknown" unless the Lumagen's firmware appends this field to the
+    # Full v5 push. It is absent on firmware 030225, and the index is
+    # empirically mapped rather than documented (see aiolumagen's protocol
+    # module). Kept diagnostic so an unknown reading isn't front and centre.
+    LumagenSensorDescription(
+        key="auto_aspect_status",
+        translation_key="auto_aspect_status",
+        device_class=SensorDeviceClass.ENUM,
+        options=[aa.value for aa in AutoAspectStatus],
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.auto_aspect_status.value if s.auto_aspect_status else None,
     ),
     # --- HDR source mastering metadata (from !I52) ---
     # All three are diagnostic — they describe the encoded content, not
@@ -153,21 +249,62 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
 )
 
 
-def _as_float(raw: str | None) -> float | None:
-    """Parse the Lumagen's vertical-rate strings (``060``, ``1200``) to Hz.
+# Note on refresh rate: the source/output rate sensors read
+# ``state.source_refresh_hz`` / ``state.output_refresh_hz``, which aiolumagen
+# derives from the ``RRR``/``PPP`` wire codes. This replaced a local
+# ``float(raw)`` that reported a 59.94 Hz signal as **59.0 Hz** — the codes are
+# the *truncated* integer part of the rate, so the NTSC family all read one
+# below nominal (Tip0011: "e.g. 059 for 59.94, 060 for 60.00"). Values for
+# those rates therefore change, correctly, on upgrade.
 
-    The Lumagen's ``RRR``/``PPP`` fields are 3-digit right-padded integers
-    representing tenths of a hertz on some firmwares and whole hertz on
-    others. We pass them through as-is (no tenths division) because the
-    tenths form is rare and mixing the two would create false history
-    glitches. If it bites us later we'll pin per-firmware.
+
+def _resolution_label(
+    vertical: str | None, width: int | None, mode: SourceMode | None
+) -> str | None:
+    """Build a familiar ``3840x2160p`` label for a signal path.
+
+    The Lumagen reports only vertical resolution; the width comes from
+    aiolumagen's ``source_width`` / ``output_width``, derived from vertical
+    resolution plus raster aspect. Assembling the display string is
+    presentation, so it belongs here rather than in the library.
+
+    Degrades in steps rather than to nothing: without a width we still return
+    ``2160p``, and without a scan mode we drop the suffix. ``None`` only when
+    there's no usable vertical resolution at all, which is also how a
+    no-signal report (``0000``) surfaces.
     """
-    if raw is None:
+    if vertical is None:
         return None
     try:
-        return float(raw)
+        height = int(vertical)
     except (TypeError, ValueError):
         return None
+    if height <= 0:
+        return None
+    if mode is SourceMode.INTERLACED:
+        suffix = "i"
+    elif mode is SourceMode.PROGRESSIVE:
+        suffix = "p"
+    else:
+        # NO_INPUT / NO_INPUT_V5 / not yet observed — no meaningful suffix.
+        suffix = ""
+    if width is None:
+        return f"{height}{suffix}"
+    return f"{width}x{height}{suffix}"
+
+
+def _active_outputs_label(outputs: tuple[int, ...] | None) -> str | None:
+    """Render the decoded output-enable set as a readable list.
+
+    ``None`` (not yet observed) stays ``None`` so the entity reads "unknown",
+    while an empty tuple is a real state — every output disabled — and reads
+    "None" rather than being conflated with "not observed".
+    """
+    if outputs is None:
+        return None
+    if not outputs:
+        return "None"
+    return ", ".join(str(n) for n in outputs)
 
 
 async def async_setup_entry(

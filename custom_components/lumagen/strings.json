@@ -39,6 +39,7 @@
       "power": { "name": "Power" },
       "is_hdr": { "name": "HDR active" },
       "display_supports_rec2020": { "name": "Display supports Rec.2020" },
+      "nls_active": { "name": "Non-linear stretch" },
       "serial_connected": { "name": "Serial connected" }
     },
     "sensor": {
@@ -48,10 +49,13 @@
       "input_memory": { "name": "Input memory" },
       "source_resolution": { "name": "Source resolution" },
       "source_vrate": { "name": "Source refresh rate" },
+      "source_resolution_full": { "name": "Source resolution (full)" },
       "source_aspect": { "name": "Source aspect" },
       "content_aspect": { "name": "Content aspect" },
       "output_resolution": { "name": "Output resolution" },
       "output_vrate": { "name": "Output refresh rate" },
+      "output_resolution_full": { "name": "Output resolution (full)" },
+      "output_aspect": { "name": "Output aspect" },
       "colorspace": {
         "name": "Colorspace",
         "state": {
@@ -82,6 +86,26 @@
           "n": "No input"
         }
       },
+      "output_scan_mode": {
+        "name": "Output mode",
+        "state": {
+          "i": "Interlaced",
+          "p": "Progressive",
+          "-": "No input",
+          "n": "No input"
+        }
+      },
+      "auto_aspect_status": {
+        "name": "Auto aspect status",
+        "state": { "Off": "Off", "Disabled": "Disabled", "On": "On" }
+      },
+      "physical_input": { "name": "Physical input" },
+      "detected_source_aspect": { "name": "Detected source aspect" },
+      "detected_content_aspect": { "name": "Detected content aspect" },
+      "active_outputs": { "name": "Active outputs" },
+      "output_cms": { "name": "Output CMS" },
+      "output_style": { "name": "Output style" },
+      "input_config": { "name": "Input config" },
       "hdr_source_max_luminance": { "name": "HDR source max luminance" },
       "hdr_source_min_luminance": { "name": "HDR source min luminance" },
       "hdr_source_max_cll": { "name": "HDR source MaxCLL" }

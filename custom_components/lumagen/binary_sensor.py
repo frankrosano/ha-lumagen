@@ -44,6 +44,15 @@ BINARY_SENSORS: tuple[LumagenBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.display_supports_rec2020,
     ),
+    # Non-Linear Stretch. Reported in the status push (!I24/!I25 field Y) as
+    # 'N' when engaged and '-' when normal — aiolumagen resolves that to a
+    # bool, so the letter-that-looks-like-"no" trap stays in the library.
+    LumagenBinarySensorDescription(
+        key="nls_active",
+        translation_key="nls_active",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.nls_active,
+    ),
     LumagenBinarySensorDescription(
         key="serial_connected",
         translation_key="serial_connected",
