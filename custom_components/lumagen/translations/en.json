@@ -218,6 +218,15 @@
       },
       "query_status": {
         "name": "Query status"
+      },
+      "show_aspect": {
+        "name": "Show aspect on screen"
+      },
+      "clear_osd_message": {
+        "name": "Clear OSD message"
+      },
+      "restart_inputs": {
+        "name": "Restart all inputs"
       }
     },
     "select": {
@@ -286,6 +295,76 @@
         "cr": {
           "name": "Add CR terminator",
           "description": "Append a carriage return. Most ZY-prefixed commands need this."
+        },
+        "device_id": {
+          "name": "Lumagen",
+          "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
+        }
+      }
+    },
+    "send_osd_message": {
+      "name": "Send OSD message",
+      "description": "Print a message on the Lumagen's on-screen display. Two rows of 30 characters; longer text is wrapped and marked with \"...\" if it still doesn't fit.",
+      "fields": {
+        "message": {
+          "name": "Message",
+          "description": "Text to display, wrapped across both rows automatically."
+        },
+        "line1": {
+          "name": "Line 1",
+          "description": "First row, placed exactly as given. Use instead of Message, not alongside it."
+        },
+        "line2": {
+          "name": "Line 2",
+          "description": "Second row, placed exactly as given."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the message stays up, on the Lumagen's own 0-9 scale. 9 leaves it up until cleared."
+        },
+        "center": {
+          "name": "Center",
+          "description": "Center each row instead of aligning it left."
+        },
+        "block_char": {
+          "name": "Bar character",
+          "description": "One character to draw as a solid block, so repeating it makes a bar. The Lumagen remembers this and applies it to later messages too."
+        },
+        "device_id": {
+          "name": "Lumagen",
+          "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
+        }
+      }
+    },
+    "set_input_label": {
+      "name": "Set input label",
+      "description": "Name one of the Lumagen's inputs. Shows in the Lumagen's menus and becomes the source name in Home Assistant. Stored on the device, so it survives restarts.",
+      "fields": {
+        "input": {
+          "name": "Input",
+          "description": "Which input to name, 1 to 8."
+        },
+        "label": {
+          "name": "Label",
+          "description": "Name for the input, up to 10 characters. Accented and non-Latin characters are rejected because the Lumagen can't display them."
+        },
+        "memory": {
+          "name": "Memory bank",
+          "description": "Labels are stored per input memory. \"ALL\" writes the same name to every bank."
+        },
+        "device_id": {
+          "name": "Lumagen",
+          "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
+        }
+      }
+    },
+    "restart_input": {
+      "name": "Restart input",
+      "description": "Pulse HDMI hotplug on an input so the source reconnects and re-reads EDID. The documented fix for a source stuck at the wrong resolution or missing a surround format. Expect a brief dropout while it renegotiates.",
+      "fields": {
+        "input": {
+          "name": "Input",
+          "description": "Which input to restart, 1 to 8. Leave empty for all inputs."
         },
         "device_id": {
           "name": "Lumagen",

@@ -41,6 +41,39 @@ SERVICE_SEND_RAW_COMMAND: Final = "send_raw_command"
 ATTR_COMMAND: Final = "command"
 ATTR_CR: Final = "cr"
 
+# Services for the capabilities that take arguments, and so can't be buttons.
+# The parameterless counterparts (clear the OSD, restart every input, show the
+# aspect overlay) are buttons instead — more discoverable, and still callable
+# from a script via button.press.
+SERVICE_SEND_OSD_MESSAGE: Final = "send_osd_message"
+SERVICE_SET_INPUT_LABEL: Final = "set_input_label"
+SERVICE_RESTART_INPUT: Final = "restart_input"
+
+ATTR_MESSAGE: Final = "message"
+ATTR_LINE1: Final = "line1"
+ATTR_LINE2: Final = "line2"
+ATTR_DURATION: Final = "duration"
+ATTR_CENTER: Final = "center"
+ATTR_BLOCK_CHAR: Final = "block_char"
+ATTR_INPUT: Final = "input"
+ATTR_LABEL: Final = "label"
+ATTR_MEMORY: Final = "memory"
+
+# Input-memory banks a label can be written to. "ALL" writes A-D at once, which
+# is the right default unless the banks are deliberately named differently.
+INPUT_LABEL_MEMORIES: Final = ("ALL", "A", "B", "C", "D")
+
+# The device's own duration vocabulary: 0-9, where 9 means "leave it up until
+# cleared". Tip0011 doesn't quantify the lower values, so they're offered as
+# opaque steps rather than mislabelled as seconds.
+OSD_DURATION_MIN: Final = 0
+OSD_DURATION_MAX: Final = 9
+
+# Highest input the label and hotplug commands accept. Lower than the input
+# *selection* range (1-19) because the device only defines labelling and
+# per-input hotplug for the first eight.
+MAX_ADDRESSABLE_INPUT: Final = 8
+
 PLATFORMS: Final = (
     Platform.BINARY_SENSOR,
     Platform.BUTTON,

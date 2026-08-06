@@ -26,15 +26,44 @@ from custom_components.lumagen.select import (
         ("185", "1.85"),    # exactly 1.85
         ("235", "2.35"),    # exactly 2.35
         ("240", "2.40"),    # exactly 2.40
+        ("190", "1.90"),    # exactly 1.90
+        ("200", "2.00"),    # exactly 2.00
+        ("210", "2.10"),    # exactly 2.10
+        ("220", "2.20"),    # exactly 2.20
+        ("255", "2.55"),    # exactly 2.55
+        ("276", "2.76"),    # exactly 2.76
         ("180", "16:9"),    # between 1.78 and 1.85 — closer to 16:9
         ("238", "2.40"),    # between 2.35 and 2.40 — closer to 2.40
         ("175", "16:9"),    # slightly under 1.78 still rounds to 16:9
-        ("250", "2.40"),    # above 2.40 clamps to the top entry
+        # 250 lands between 2.40 and 2.55 and is nearer the latter. It used to
+        # read 2.40 simply because that was the widest ratio offered; now that
+        # the full set is selectable, snapping upward is the correct answer.
+        ("250", "2.55"),
+        ("300", "2.76"),    # above the widest ratio clamps to the top entry
         ("100", "4:3"),     # well below 1.33 clamps to the bottom entry
     ],
 )
 def test_closest_aspect_label(raw: str, expected: str) -> None:
     assert _closest_aspect_label(raw) == expected
+
+
+def test_every_numeric_aspect_option_is_reachable_from_a_reported_value() -> None:
+    """The dropdown and the reverse lookup must agree on the numeric ratios.
+
+    A selectable ratio with no entry in the reverse table would snap straight to
+    a neighbour on read-back: pick 2.10 and the UI would show 2.00. Letterbox
+    and 16:9 NZ are excluded because they're framing variants sharing a detected
+    aspect with their base ratio, so no reported value can identify them.
+    """
+    from custom_components.lumagen.select import (
+        _ASPECT_COMMANDS,
+        _CONTENT_ASPECT_TO_LABEL,
+    )
+
+    framing_variants = {"Letterbox", "16:9 NZ"}
+    numeric_options = set(_ASPECT_COMMANDS) - framing_variants
+    reachable = {label for _code, label in _CONTENT_ASPECT_TO_LABEL}
+    assert numeric_options == reachable
 
 
 @pytest.mark.parametrize("raw", [None, "", "abc", "not-a-number"])

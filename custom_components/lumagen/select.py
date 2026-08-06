@@ -63,8 +63,14 @@ _ASPECT_COMMANDS: dict[str, Aspect] = {
     "16:9": Aspect.RATIO_16_9,
     "16:9 NZ": Aspect.RATIO_16_9_NZ,
     "1.85": Aspect.RATIO_1_85,
+    "1.90": Aspect.RATIO_1_90,
+    "2.00": Aspect.RATIO_2_00,
+    "2.10": Aspect.RATIO_2_10,
+    "2.20": Aspect.RATIO_2_20,
     "2.35": Aspect.RATIO_2_35,
     "2.40": Aspect.RATIO_2_40,
+    "2.55": Aspect.RATIO_2_55,
+    "2.76": Aspect.RATIO_2_76,
 }
 
 
@@ -73,12 +79,28 @@ _ASPECT_COMMANDS: dict[str, Aspect] = {
 # actually active — only detected content aspect — so when the user
 # selects a mismatched preset (e.g. 4:3 on 16:9 content) the display will
 # be wrong until they pick another preset. Protocol limitation, not a bug.
+#
+# Every *numeric* ratio offered in the dropdown needs an entry here, or picking
+# it would immediately snap the shown value to a neighbour: with 2.10 offered
+# but unmapped, selecting it on 2.10 content would read back as "2.00" or
+# "2.20". The test suite asserts the two tables agree on that set.
+#
+# Letterbox and 16:9 NZ are deliberately absent: they're framing/zoom variants
+# that share a detected content aspect with their base ratio (4:3 and 16:9), so
+# no reported value could ever distinguish them. Selecting either shows the
+# base ratio back, which is the honest answer.
 _CONTENT_ASPECT_TO_LABEL: tuple[tuple[int, str], ...] = (
     (133, "4:3"),
     (178, "16:9"),
     (185, "1.85"),
+    (190, "1.90"),
+    (200, "2.00"),
+    (210, "2.10"),
+    (220, "2.20"),
     (235, "2.35"),
     (240, "2.40"),
+    (255, "2.55"),
+    (276, "2.76"),
 )
 
 

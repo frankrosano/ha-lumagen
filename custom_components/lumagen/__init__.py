@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import voluptuous as vol
+from aiolumagen import INPUT_LABEL_MAX_LENGTH
 from homeassistant.const import ATTR_AREA_ID, ATTR_DEVICE_ID, ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
@@ -12,31 +14,94 @@ from homeassistant.helpers import config_validation as cv
 
 from . import coordinator as _coordinator
 from .const import (
+    ATTR_BLOCK_CHAR,
+    ATTR_CENTER,
     ATTR_COMMAND,
     ATTR_CR,
+    ATTR_DURATION,
+    ATTR_INPUT,
+    ATTR_LABEL,
+    ATTR_LINE1,
+    ATTR_LINE2,
+    ATTR_MEMORY,
+    ATTR_MESSAGE,
     CONF_POLL_INTERVAL,
     CONF_URL,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
+    INPUT_LABEL_MEMORIES,
+    MAX_ADDRESSABLE_INPUT,
+    OSD_DURATION_MAX,
+    OSD_DURATION_MIN,
     PLATFORMS,
+    SERVICE_RESTART_INPUT,
+    SERVICE_SEND_OSD_MESSAGE,
     SERVICE_SEND_RAW_COMMAND,
+    SERVICE_SET_INPUT_LABEL,
 )
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
+# Optional routing for the rare multi-Lumagen setup. These must be declared on
+# every schema even though they're optional: a plain vol.Schema rejects
+# undeclared keys, so without them any call carrying a target would fail
+# validation before reaching the handler.
+_TARGET_FIELDS: dict[Any, Any] = {
+    vol.Optional(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(ATTR_ENTITY_ID): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(ATTR_AREA_ID): vol.All(cv.ensure_list, [cv.string]),
+}
+
 _SEND_RAW_COMMAND_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_COMMAND): vol.All(cv.string, vol.Length(min=1, max=64)),
         vol.Optional(ATTR_CR, default=False): cv.boolean,
-        # Optional routing for the rare multi-Lumagen setup. These must be
-        # declared even though they're optional: a plain vol.Schema rejects
-        # undeclared keys, so without them any call carrying a target would
-        # fail validation before reaching the handler.
-        vol.Optional(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(ATTR_ENTITY_ID): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(ATTR_AREA_ID): vol.All(cv.ensure_list, [cv.string]),
+        **_TARGET_FIELDS,
+    }
+)
+
+# Lengths aren't capped here. The library trims each row to the device's field
+# width and validates the rest, so duplicating those limits in the schema would
+# create a second place to keep in step with the hardware.
+_SEND_OSD_MESSAGE_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_MESSAGE): cv.string,
+        vol.Optional(ATTR_LINE1): cv.string,
+        vol.Optional(ATTR_LINE2): cv.string,
+        vol.Optional(ATTR_DURATION, default=3): vol.All(
+            vol.Coerce(int), vol.Range(min=OSD_DURATION_MIN, max=OSD_DURATION_MAX)
+        ),
+        vol.Optional(ATTR_CENTER, default=False): cv.boolean,
+        vol.Optional(ATTR_BLOCK_CHAR): vol.All(cv.string, vol.Length(min=1, max=1)),
+        **_TARGET_FIELDS,
+    }
+)
+
+_SET_INPUT_LABEL_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_INPUT): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=MAX_ADDRESSABLE_INPUT)
+        ),
+        # Length is capped here as well as in the library, because the UI
+        # selector needs a number to enforce and a rejected label is a poor way
+        # to discover the limit.
+        vol.Required(ATTR_LABEL): vol.All(
+            cv.string, vol.Length(max=INPUT_LABEL_MAX_LENGTH)
+        ),
+        vol.Optional(ATTR_MEMORY, default="ALL"): vol.In(INPUT_LABEL_MEMORIES),
+        **_TARGET_FIELDS,
+    }
+)
+
+_RESTART_INPUT_SCHEMA = vol.Schema(
+    {
+        # Omitted means every input, matching the client default.
+        vol.Optional(ATTR_INPUT): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=MAX_ADDRESSABLE_INPUT)
+        ),
+        **_TARGET_FIELDS,
     }
 )
 
@@ -75,8 +140,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: LumagenConfigEntry) -> 
     # use a single domain-level service that dispatches to whichever
     # config entry is loaded.
     if not hass.config_entries.async_loaded_entries(DOMAIN):
-        hass.services.async_remove(DOMAIN, SERVICE_SEND_RAW_COMMAND)
+        for service in _DOMAIN_SERVICES:
+            hass.services.async_remove(DOMAIN, service)
     return True
+
+
+_DOMAIN_SERVICES = (
+    SERVICE_SEND_RAW_COMMAND,
+    SERVICE_SEND_OSD_MESSAGE,
+    SERVICE_SET_INPUT_LABEL,
+    SERVICE_RESTART_INPUT,
+)
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
@@ -87,29 +161,49 @@ def _async_register_services(hass: HomeAssistant) -> None:
     (rare), call the service with a target's device_id so it can be
     routed; otherwise it picks whatever entry is loaded.
     """
-    if hass.services.has_service(DOMAIN, SERVICE_SEND_RAW_COMMAND):
+    # Checks every service rather than one as a proxy, so adding a service to
+    # _DOMAIN_SERVICES can't be silently skipped on a second config entry.
+    if all(hass.services.has_service(DOMAIN, name) for name in _DOMAIN_SERVICES):
         return
 
     async def _handle_send_raw_command(call: ServiceCall) -> None:
         command: str = call.data[ATTR_COMMAND]
         cr: bool = call.data[ATTR_CR]
-        loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
-        if not loaded_entries:
-            raise ServiceValidationError(
-                "No Lumagen config entries are loaded; cannot send command."
-            )
-        # If the user specified a target device, prefer the matching
-        # entry. Otherwise fall back to the first loaded entry.
-        target_entry = _resolve_target_entry(hass, call, loaded_entries)
-        coordinator: LumagenCoordinator = target_entry.runtime_data
-        _LOGGER.debug(
-            "send_raw_command -> entry=%s command=%r cr=%s",
-            target_entry.entry_id, command, cr,
-        )
+        coordinator = _coordinator_for(hass, call)
+        _LOGGER.debug("send_raw_command -> command=%r cr=%s", command, cr)
         # refresh=False — the caller is doing protocol-level work and
         # almost certainly doesn't want a follow-up status query muddying
         # the response stream they're watching.
         await coordinator.client.send_command(command, cr=cr, refresh=False)
+
+    async def _handle_send_osd_message(call: ServiceCall) -> None:
+        coordinator = _coordinator_for(hass, call)
+        block_char: str | None = call.data.get(ATTR_BLOCK_CHAR)
+        if block_char is not None:
+            # Nominate the bar character before the message that uses it, so a
+            # volume/progress bar is one service call rather than two. The
+            # setting is global and sticky on the device — every later message
+            # renders that character as a block too.
+            await coordinator.client.set_osd_block_char(block_char)
+        await coordinator.client.show_message(
+            call.data.get(ATTR_MESSAGE),
+            line1=call.data.get(ATTR_LINE1),
+            line2=call.data.get(ATTR_LINE2),
+            duration=call.data[ATTR_DURATION],
+            center=call.data[ATTR_CENTER],
+        )
+
+    async def _handle_set_input_label(call: ServiceCall) -> None:
+        coordinator = _coordinator_for(hass, call)
+        await coordinator.client.set_input_label(
+            call.data[ATTR_INPUT],
+            call.data[ATTR_LABEL],
+            memory=call.data[ATTR_MEMORY],
+        )
+
+    async def _handle_restart_input(call: ServiceCall) -> None:
+        coordinator = _coordinator_for(hass, call)
+        await coordinator.client.restart_input(call.data.get(ATTR_INPUT, "all"))
 
     hass.services.async_register(
         DOMAIN,
@@ -117,6 +211,41 @@ def _async_register_services(hass: HomeAssistant) -> None:
         _handle_send_raw_command,
         schema=_SEND_RAW_COMMAND_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SEND_OSD_MESSAGE,
+        _handle_send_osd_message,
+        schema=_SEND_OSD_MESSAGE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_INPUT_LABEL,
+        _handle_set_input_label,
+        schema=_SET_INPUT_LABEL_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RESTART_INPUT,
+        _handle_restart_input,
+        schema=_RESTART_INPUT_SCHEMA,
+    )
+
+
+def _coordinator_for(hass: HomeAssistant, call: ServiceCall) -> LumagenCoordinator:
+    """Resolve the coordinator a service call should act on.
+
+    Shared by every service so targeting behaves identically across them:
+    optional with one Lumagen, honoured when given, and loud when a target
+    matches nothing (see :func:`_resolve_target_entry`).
+    """
+    loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
+    if not loaded_entries:
+        raise ServiceValidationError(
+            "No Lumagen config entries are loaded; cannot send command."
+        )
+    target_entry = _resolve_target_entry(hass, call, loaded_entries)
+    coordinator: LumagenCoordinator = target_entry.runtime_data
+    return coordinator
 
 
 def _resolve_target_entry(

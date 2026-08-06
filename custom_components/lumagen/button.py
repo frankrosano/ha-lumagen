@@ -37,10 +37,12 @@ def _cmd(command: str) -> Callable[[LumagenClient], Awaitable[None]]:
     return _send
 
 
-async def _save_sequence(client: LumagenClient) -> None:
-    """'Save' is a two-byte sequence — S then OK — per the Lumagen RS-232 doc."""
-    await client.send_command(Misc.SAVE)
-    await client.send_command(Navigation.OK)
+# Note on saving: this button used to send the remote's SAVE key (`S`) followed
+# by OK, mirroring what a person does with the handset. It now calls the
+# single-shot ZY6SAVECONFIG instead. Same outcome, but a two-keystroke sequence
+# that loses its second keystroke — a dropped byte, a reconnect landing between
+# the two — leaves a confirmation prompt sitting on the user's screen with no
+# way for the integration to know. One command can't half-happen.
 
 
 BUTTONS: tuple[LumagenButtonDescription, ...] = (
@@ -108,13 +110,39 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
         key="save",
         translation_key="save",
         entity_category=EntityCategory.CONFIG,
-        press_fn=_save_sequence,
+        press_fn=lambda c: c.save_config(),
     ),
     LumagenButtonDescription(
         key="query_status",
         translation_key="query_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         press_fn=lambda c: c.query_full_status(),
+    ),
+    # Show the current input and aspect on the projector itself — the quickest
+    # way to confirm what the Lumagen thinks it's doing without walking to a
+    # dashboard.
+    LumagenButtonDescription(
+        key="show_aspect",
+        translation_key="show_aspect",
+        press_fn=lambda c: c.show_aspect(),
+    ),
+    # Clears a message left up by send_osd_message with duration 9 (which
+    # persists until told otherwise). Harmless when nothing is displayed.
+    LumagenButtonDescription(
+        key="clear_osd_message",
+        translation_key="clear_osd_message",
+        press_fn=lambda c: c.clear_message(),
+    ),
+    # Pulses HDMI hotplug on every input so sources re-read EDID — the
+    # documented fix for a source stuck at the wrong resolution or missing an
+    # audio format. Expect a brief dropout while they renegotiate; that's the
+    # mechanism, not a fault. Per-input restarts are available via the
+    # restart_input service.
+    LumagenButtonDescription(
+        key="restart_inputs",
+        translation_key="restart_inputs",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.restart_input("all"),
     ),
 )
 

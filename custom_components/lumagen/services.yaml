@@ -43,3 +43,169 @@ send_raw_command:
       selector:
         device:
           integration: lumagen
+
+send_osd_message:
+  name: Send OSD message
+  description: >
+    Print a message on the Lumagen's on-screen display — useful for
+    doorbell and camera alerts, or any notification you want on the
+    projector rather than a phone. Two rows of 30 characters. Longer text
+    is wrapped across both rows and marked with "..." if it still doesn't
+    fit; characters the Lumagen can't render are dropped.
+  fields:
+    message:
+      name: Message
+      description: >
+        Text to display, wrapped across both rows automatically. Use the
+        Line 1 / Line 2 fields instead if you want to control the split
+        yourself.
+      required: false
+      example: "Front door motion detected"
+      selector:
+        text:
+    line1:
+      name: Line 1
+      description: >
+        First row, placed exactly as given. Use instead of Message, not
+        alongside it.
+      required: false
+      example: "Front door"
+      selector:
+        text:
+    line2:
+      name: Line 2
+      description: Second row, placed exactly as given.
+      required: false
+      example: "Motion detected"
+      selector:
+        text:
+    duration:
+      name: Duration
+      description: >
+        How long the message stays up, using the Lumagen's own 0-9 scale.
+        9 leaves it on screen until the "Clear OSD message" button is
+        pressed. The lower values are the device's own steps — the RS-232
+        documentation doesn't state what each one is in seconds.
+      required: false
+      default: 3
+      selector:
+        number:
+          min: 0
+          max: 9
+          mode: slider
+    center:
+      name: Center
+      description: Center each row instead of aligning it left.
+      required: false
+      default: false
+      selector:
+        boolean:
+    block_char:
+      name: Bar character
+      description: >
+        Nominate one character to be drawn as a solid block, so repeating
+        it in the message draws a bar (for volume, progress, and so on).
+        Pick something that won't appear in ordinary text, like #. This
+        setting is remembered by the Lumagen and applies to later messages
+        too, so that character will keep rendering as a block until you
+        change it.
+      required: false
+      example: "#"
+      selector:
+        text:
+    device_id:
+      name: Lumagen
+      description: >
+        Which Lumagen to send to. Only needed if you have more than one
+        configured — leave empty to use your only Lumagen.
+      required: false
+      selector:
+        device:
+          integration: lumagen
+
+set_input_label:
+  name: Set input label
+  description: >
+    Name one of the Lumagen's inputs. The label shows in the Lumagen's own
+    menus and becomes the source name in Home Assistant, replacing
+    "Input 1", "Input 2" and so on. Written to the device, so it survives
+    restarts. The label is read back afterwards, so what you see is what
+    the Lumagen actually stored.
+  fields:
+    input:
+      name: Input
+      description: Which input to name, 1 to 8.
+      required: true
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 8
+          mode: box
+    label:
+      name: Label
+      description: >
+        Name for the input, up to 10 characters. Spaces are fine.
+        Accented and non-Latin characters are not — the Lumagen can't
+        display them and the command will be rejected rather than
+        silently altered.
+      required: true
+      example: "Apple TV"
+      selector:
+        text:
+    memory:
+      name: Memory bank
+      description: >
+        Labels are stored per input memory. "ALL" writes the same name to
+        every bank, which is what you want unless you've deliberately set
+        the banks up to show different names.
+      required: false
+      default: "ALL"
+      selector:
+        select:
+          options:
+            - "ALL"
+            - "A"
+            - "B"
+            - "C"
+            - "D"
+    device_id:
+      name: Lumagen
+      description: >
+        Which Lumagen to send to. Only needed if you have more than one
+        configured — leave empty to use your only Lumagen.
+      required: false
+      selector:
+        device:
+          integration: lumagen
+
+restart_input:
+  name: Restart input
+  description: >
+    Pulse HDMI hotplug on an input so the source reconnects and re-reads
+    the Lumagen's EDID. This is the documented fix for a source stuck at
+    the wrong resolution, missing a surround format, or showing nothing
+    after something changed further down the chain — the equivalent of
+    unplugging and replugging the cable. Expect a brief dropout on that
+    input while it renegotiates. To restart every input at once, use the
+    "Restart all inputs" button.
+  fields:
+    input:
+      name: Input
+      description: Which input to restart, 1 to 8. Leave empty for all inputs.
+      required: false
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 8
+          mode: box
+    device_id:
+      name: Lumagen
+      description: >
+        Which Lumagen to send to. Only needed if you have more than one
+        configured — leave empty to use your only Lumagen.
+      required: false
+      selector:
+        device:
+          integration: lumagen

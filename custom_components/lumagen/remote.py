@@ -79,10 +79,20 @@ _COMMANDS: dict[str, str] = {
     "aspect_16_9": Aspect.RATIO_16_9,
     "aspect_16_9_nz": Aspect.RATIO_16_9_NZ,
     "aspect_1_85": Aspect.RATIO_1_85,
+    "aspect_1_90": Aspect.RATIO_1_90,
+    "aspect_2_00": Aspect.RATIO_2_00,
+    "aspect_2_10": Aspect.RATIO_2_10,
+    "aspect_2_20": Aspect.RATIO_2_20,
     "aspect_2_35": Aspect.RATIO_2_35,
     "aspect_2_40": Aspect.RATIO_2_40,
+    "aspect_2_55": Aspect.RATIO_2_55,
+    "aspect_2_76": Aspect.RATIO_2_76,
     "auto_aspect_on": Aspect.AUTO_ENABLE,
     "auto_aspect_off": Aspect.AUTO_DISABLE,
+    # Non-linear stretch is a modifier, not a mode: send an aspect first, then
+    # this. As a command list that's one call —
+    # command=["aspect_4_3", "nls"].
+    "nls": Aspect.NLS,
     # Memory
     "memory_a": Memory.A,
     "memory_b": Memory.B,
@@ -93,7 +103,17 @@ _COMMANDS: dict[str, str] = {
     "test_pattern": Misc.TEST_PATTERN,
     "osd_on": Misc.OSD_ON,
     "osd_off": Misc.OSD_OFF,
+    "zone": Misc.ZONE,
+    # Menu-context keys. "help" needs the menu open and an item highlighted;
+    # "alt" prefixes the key it modifies, so it only makes sense in a list —
+    # command=["alt", "aspect_2_35"].
+    "help": Navigation.HELP,
+    "alt": Navigation.ALT,
 }
+# Deliberately absent: show_aspect and save. Both need a CR terminator and
+# this entity sends without one (see the module docstring), so a friendly name
+# here would produce a command the Lumagen silently ignores. They're buttons
+# instead, where the CR is handled by the client method.
 
 
 async def async_setup_entry(
