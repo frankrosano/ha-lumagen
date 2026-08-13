@@ -14,4 +14,4 @@ If you find yourself needing to read `Tip0011` while editing `coordinator.py` or
 
 This repo is public: never copy a PDF, firmware blob, vendor EXE or capture out of `lumagen-research` into it. Cite by filename if a reference is genuinely needed.
 
-The richer references doc with file-by-file detail lives at `../esphome-lumagen/.kiro/steering/references.md`.
+The file-by-file inventory, with the rules for handling this material, lives in the research repo itself at `../lumagen-research/.kiro/steering/references.md`.
