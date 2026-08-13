@@ -55,7 +55,7 @@ ha-lumagen/
 |---|---|
 | Bytes on the wire, command formatting, state parsing | `aiolumagen` |
 | HA entities, config flow, coordinator, translations | This repo |
-| ESP32 firmware bridging RS-232 to network | `esphome-lumagen` |
-| Lumagen protocol PDFs, Crestron driver, Pronto codes | `esphome-lumagen/References/` (gitignored) |
+| ESP32 firmware bridging the Lumagen's serial port to the network | `esphome-lumagen` |
+| Lumagen protocol PDFs, Crestron driver, Pronto codes, firmware tooling | `lumagen-research` (private repo) |
 
 When in doubt: if it could be useful to a non-HA Python consumer, it goes in `aiolumagen`. If it's HA-shaped (entity descriptions, platforms, config flows, translations), it goes here.
