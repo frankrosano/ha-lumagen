@@ -24,15 +24,16 @@ ESPHome integration ─── esphome://host:6053/?port_name=Lumagen&key=...
   ▼                              │
 esphome-lumagen firmware         │
   │                              │
-  └── UART → MAX3232 → RS-232 ───┘
+  └── USB host → USB-B ──────────┘
+      (ESP32-S3 drives the FT232R inside the Lumagen)
 ```
 
-Direct RS-232 from the HA host's `/dev/tty*` also works — same dropdown, same flow.
+Direct serial from the HA host also works — either a USB-B cable to the same FT232R, or RS-232 to the DB9. Same dropdown, same flow.
 
 ## Requirements
 
 - **Home Assistant 2026.5+** (required for native `serial_proxy` surfacing in the `usb` integration — older versions won't show the proxied port in the dropdown)
-- Either the `esphome-lumagen` bridge (adopted in HA's ESPHome integration) **or** a direct RS-232 cable from HA host to the Lumagen's DB9
+- Either the `esphome-lumagen` bridge (adopted in HA's ESPHome integration) **or** a direct cable from the HA host to the Lumagen's USB-B or DB9 port
 
 ## Exposed Entities
 
