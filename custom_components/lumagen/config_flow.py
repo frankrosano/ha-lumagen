@@ -56,6 +56,11 @@ _LOGGER = logging.getLogger(__name__)
 class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the Lumagen config flow."""
 
+    # Still 1. The unique_id digest changed in 0.8.0 (SHA-1 -> SHA-256), which
+    # is normally a migration, but this integration is pre-release with a
+    # single known install — the entry gets removed and re-added instead. Don't
+    # bump VERSION without adding async_migrate_entry: HA fails an entry whose
+    # stored version is older than the flow's with no handler present.
     VERSION = 1
     MINOR_VERSION = 1
 
@@ -145,12 +150,36 @@ class LumagenOptionsFlow(OptionsFlow):
 def _unique_id_for(url: str) -> str:
     """Stable per-URL unique ID.
 
-    A SHA-1 prefix is plenty of uniqueness (~2^64 for 16 hex chars) and
-    keeps the ID opaque in the UI. If the user moves the Lumagen to a new
-    bridge, the URL changes and they re-add the integration; we don't try
-    to track the device across relocations in v0.1.
+    This is a deduplication key, not a signature: it exists so
+    ``_abort_if_unique_id_configured`` can recognise a URL that is already
+    set up, and so the device page shows something opaque rather than a URL
+    containing a pre-shared key. Nothing verifies it and no attacker
+    benefits from colliding with it.
+
+    It is SHA-256 all the same. The digest was SHA-1 through v0.7 and was
+    swapped because there is no reason to ship a primitive that every
+    scanner flags on sight, and arguing the exception on each report costs
+    more than the change did. ``usedforsecurity=False`` records the intent
+    and keeps the call working on FIPS builds.
+
+    Truncated to 16 hex chars — 64 bits, so birthday collisions arrive
+    around 2^32 distinct URLs. A home has a handful.
+
+    Note this is derived from the URL, so moving the Lumagen to a different
+    bridge changes its identity. That is a deliberate v0.1 limitation, not
+    a property of the digest: we don't try to track a unit across
+    relocations.
+
+    Because :mod:`.entity` builds every entity ``unique_id`` and the device
+    registry identifiers on top of this value, changing the digest changes
+    the identity of everything the integration owns. An entry created
+    before 0.8.0 keeps its old SHA-1 id and keeps working, but a re-add of
+    the same URL will no longer be recognised as a duplicate. The fix for
+    an existing install is to remove and re-add the integration; there is
+    deliberately no migration, as this is pre-release with one known
+    install. Add one before that stops being true.
     """
-    return hashlib.sha1(url.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    return hashlib.sha256(url.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
 def _default_title(url: str) -> str:
