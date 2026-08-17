@@ -77,9 +77,7 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
     LumagenSensorDescription(
         key="source_resolution_full",
         translation_key="source_resolution_full",
-        value_fn=lambda s: _resolution_label(
-            s.source_resolution, s.source_width, s.source_mode
-        ),
+        value_fn=lambda s: _resolution_label(s.source_resolution, s.source_width, s.source_mode),
     ),
     LumagenSensorDescription(
         key="source_aspect",
@@ -277,7 +275,7 @@ def _resolution_label(
         return None
     try:
         height = int(vertical)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if height <= 0:
         return None
@@ -313,9 +311,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        LumagenSensor(coordinator, description) for description in SENSORS
-    )
+    async_add_entities(LumagenSensor(coordinator, description) for description in SENSORS)
 
 
 class LumagenSensor(LumagenBaseEntity, SensorEntity):

@@ -99,9 +99,7 @@ async def test_send_command_delays_between_but_not_after_last(
     """delay_secs sleeps between sends, never after the final one."""
     entity, _ = _remote()
     sleep_mock = AsyncMock()
-    monkeypatch.setattr(
-        "custom_components.lumagen.remote.asyncio.sleep", sleep_mock
-    )
+    monkeypatch.setattr("custom_components.lumagen.remote.asyncio.sleep", sleep_mock)
 
     # 3 commands with the default delay -> 2 inter-command sleeps.
     await entity.async_send_command(["up", "down", "ok"])

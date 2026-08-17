@@ -183,7 +183,7 @@ class LumagenMediaPlayer(LumagenBaseEntity, MediaPlayerEntity):
             return None
         try:
             number = int(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         if not 1 <= number <= _INPUT_COUNT:
             # Inputs outside the surfaced range show as no selection rather

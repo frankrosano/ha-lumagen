@@ -166,14 +166,10 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         values are remembered so a follow-up change to a different field
         doesn't lose them if the device hasn't reported back yet.
         """
-        current_enabled, current_level, current_sensitivity = (
-            self.effective_sharpness()
-        )
+        current_enabled, current_level, current_sensitivity = self.effective_sharpness()
         new_enabled = current_enabled if enabled is None else enabled
         new_level = current_level if level is None else level
-        new_sensitivity = (
-            current_sensitivity if sensitivity is None else sensitivity
-        )
+        new_sensitivity = current_sensitivity if sensitivity is None else sensitivity
         await self.client.set_sharpness(
             enabled=new_enabled, level=new_level, sensitivity=new_sensitivity
         )
@@ -203,9 +199,7 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         await self.client.stop()
 
     @callback
-    def _on_state_update(
-        self, state: LumagenState, _codes: tuple[str, ...]
-    ) -> None:
+    def _on_state_update(self, state: LumagenState, _codes: tuple[str, ...]) -> None:
         """Push-side path: aiolumagen -> coordinator -> entities."""
         self.async_set_updated_data(state)
 

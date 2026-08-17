@@ -53,9 +53,7 @@ def _make_client_mock(*, model: str = "RadiancePro", firmware: str = "030225") -
     client.state = LumagenState(model=model, firmware=firmware)
     # Validation awaits the device-info reply rather than polling state, so the
     # mock has to return the !S01 payload the real client would.
-    client.query_device_info = AsyncMock(
-        return_value=f"{model},{firmware},1018,000000"
-    )
+    client.query_device_info = AsyncMock(return_value=f"{model},{firmware},1018,000000")
     return client
 
 

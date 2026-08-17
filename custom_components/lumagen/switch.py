@@ -50,15 +50,11 @@ class LumagenSwitchDescription(SwitchEntityDescription):
     set_fn: Callable[[LumagenClient, LumagenState, bool], Awaitable[None]] | None = None
 
 
-async def _set_game_mode(
-    client: LumagenClient, _state: LumagenState, enabled: bool
-) -> None:
+async def _set_game_mode(client: LumagenClient, _state: LumagenState, enabled: bool) -> None:
     await client.set_game_mode(enabled)
 
 
-async def _set_auto_aspect(
-    client: LumagenClient, _state: LumagenState, enabled: bool
-) -> None:
+async def _set_auto_aspect(client: LumagenClient, _state: LumagenState, enabled: bool) -> None:
     """Toggle automatic aspect detection, then re-query to confirm.
 
     There's no ``client.set_auto_aspect`` wrapper (the on/off commands are
@@ -105,9 +101,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        LumagenSwitch(coordinator, description) for description in SWITCHES
-    )
+    async_add_entities(LumagenSwitch(coordinator, description) for description in SWITCHES)
 
 
 class LumagenSwitch(LumagenBaseEntity, SwitchEntity):

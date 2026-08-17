@@ -109,16 +109,12 @@ def test_duplicate_labels_fall_back_to_numbered() -> None:
     Regression: a device reporting all inputs as "Input" produced 8 identical
     dropdown entries; picking any of them resolved to input 1.
     """
-    entity, _ = _media_player(
-        LumagenState(input_labels=dict.fromkeys(range(1, 9), "Input"))
-    )
+    entity, _ = _media_player(LumagenState(input_labels=dict.fromkeys(range(1, 9), "Input")))
     assert entity.source_list == [f"Input {n}" for n in range(1, 9)]
 
 
 async def test_select_source_duplicate_labels_dispatches_correct_input() -> None:
-    entity, client = _media_player(
-        LumagenState(input_labels=dict.fromkeys(range(1, 9), "Input"))
-    )
+    entity, client = _media_player(LumagenState(input_labels=dict.fromkeys(range(1, 9), "Input")))
     await entity.async_select_source("Input 5")
     client.set_input.assert_awaited_once_with(5)
 
@@ -132,19 +128,21 @@ def test_source_current_with_duplicate_labels_is_numbered() -> None:
 
 def test_partial_duplicate_disambiguates_only_the_collision() -> None:
     """A unique custom label survives; only the colliding pair is numbered."""
-    entity, _ = _media_player(
-        LumagenState(input_labels={1: "TV", 2: "TV", 4: "Roku"})
-    )
+    entity, _ = _media_player(LumagenState(input_labels={1: "TV", 2: "TV", 4: "Roku"}))
     assert entity.source_list == [
-        "Input 1", "Input 2", "Input 3", "Roku",
-        "Input 5", "Input 6", "Input 7", "Input 8",
+        "Input 1",
+        "Input 2",
+        "Input 3",
+        "Roku",
+        "Input 5",
+        "Input 6",
+        "Input 7",
+        "Input 8",
     ]
 
 
 async def test_select_disambiguated_label_dispatches_correct_input() -> None:
-    entity, client = _media_player(
-        LumagenState(input_labels={1: "TV", 2: "TV", 4: "Roku"})
-    )
+    entity, client = _media_player(LumagenState(input_labels={1: "TV", 2: "TV", 4: "Roku"}))
     await entity.async_select_source("Roku")
     client.set_input.assert_awaited_once_with(4)
 

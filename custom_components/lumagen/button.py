@@ -47,36 +47,18 @@ def _cmd(command: str) -> Callable[[LumagenClient], Awaitable[None]]:
 
 BUTTONS: tuple[LumagenButtonDescription, ...] = (
     # --- Power ---
-    LumagenButtonDescription(
-        key="power_on", translation_key="power_on", press_fn=_cmd(Power.ON)
-    ),
+    LumagenButtonDescription(key="power_on", translation_key="power_on", press_fn=_cmd(Power.ON)),
     LumagenButtonDescription(
         key="standby", translation_key="standby", press_fn=_cmd(Power.STANDBY)
     ),
-
     # --- OSD navigation ---
-    LumagenButtonDescription(
-        key="menu", translation_key="menu", press_fn=_cmd(Navigation.MENU)
-    ),
-    LumagenButtonDescription(
-        key="exit", translation_key="exit", press_fn=_cmd(Navigation.EXIT)
-    ),
-    LumagenButtonDescription(
-        key="ok", translation_key="ok", press_fn=_cmd(Navigation.OK)
-    ),
-    LumagenButtonDescription(
-        key="up", translation_key="up", press_fn=_cmd(Navigation.UP)
-    ),
-    LumagenButtonDescription(
-        key="down", translation_key="down", press_fn=_cmd(Navigation.DOWN)
-    ),
-    LumagenButtonDescription(
-        key="left", translation_key="left", press_fn=_cmd(Navigation.LEFT)
-    ),
-    LumagenButtonDescription(
-        key="right", translation_key="right", press_fn=_cmd(Navigation.RIGHT)
-    ),
-
+    LumagenButtonDescription(key="menu", translation_key="menu", press_fn=_cmd(Navigation.MENU)),
+    LumagenButtonDescription(key="exit", translation_key="exit", press_fn=_cmd(Navigation.EXIT)),
+    LumagenButtonDescription(key="ok", translation_key="ok", press_fn=_cmd(Navigation.OK)),
+    LumagenButtonDescription(key="up", translation_key="up", press_fn=_cmd(Navigation.UP)),
+    LumagenButtonDescription(key="down", translation_key="down", press_fn=_cmd(Navigation.DOWN)),
+    LumagenButtonDescription(key="left", translation_key="left", press_fn=_cmd(Navigation.LEFT)),
+    LumagenButtonDescription(key="right", translation_key="right", press_fn=_cmd(Navigation.RIGHT)),
     # --- Aspect (momentary only) ---
     # Preset selection (4:3, 16:9, 2.35, …) and memory recall (A-D) now
     # live on the aspect_select / memory_select entities, and direct input
@@ -88,7 +70,6 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
         translation_key="redetect_aspect",
         press_fn=lambda c: c.reset_auto_aspect(),
     ),
-
     # --- Misc ---
     # No "Menu off" (`!`) or "HDR setup" (`Y`) buttons: on this hardware they
     # duplicate Exit (`X`) and Left (`<`) respectively, so they were two extra
@@ -100,12 +81,8 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
         translation_key="test_pattern",
         press_fn=_cmd(Misc.TEST_PATTERN),
     ),
-    LumagenButtonDescription(
-        key="osd_on", translation_key="osd_on", press_fn=_cmd(Misc.OSD_ON)
-    ),
-    LumagenButtonDescription(
-        key="osd_off", translation_key="osd_off", press_fn=_cmd(Misc.OSD_OFF)
-    ),
+    LumagenButtonDescription(key="osd_on", translation_key="osd_on", press_fn=_cmd(Misc.OSD_ON)),
+    LumagenButtonDescription(key="osd_off", translation_key="osd_off", press_fn=_cmd(Misc.OSD_OFF)),
     LumagenButtonDescription(
         key="save",
         translation_key="save",
@@ -153,9 +130,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        LumagenButton(coordinator, description) for description in BUTTONS
-    )
+    async_add_entities(LumagenButton(coordinator, description) for description in BUTTONS)
 
 
 class LumagenButton(LumagenBaseEntity, ButtonEntity):

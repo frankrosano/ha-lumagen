@@ -78,7 +78,8 @@ async def test_service_writes_through_to_client_with_cr(hass: HomeAssistant) -> 
     # Find the call that matches our service invocation, ignoring the
     # startup-handshake calls the client made earlier.
     matching_calls = [
-        c for c in client.send_command.await_args_list
+        c
+        for c in client.send_command.await_args_list
         if c.args == ("ZY551",) and c.kwargs.get("cr") is True
     ]
     assert len(matching_calls) == 1
@@ -97,10 +98,7 @@ async def test_service_defaults_cr_false(hass: HomeAssistant) -> None:
         blocking=True,
     )
 
-    matching_calls = [
-        c for c in client.send_command.await_args_list
-        if c.args == ("%",)
-    ]
+    matching_calls = [c for c in client.send_command.await_args_list if c.args == ("%",)]
     assert len(matching_calls) == 1
     assert matching_calls[0].kwargs.get("cr") is False
 

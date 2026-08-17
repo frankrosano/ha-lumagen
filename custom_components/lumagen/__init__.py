@@ -87,9 +87,7 @@ _SET_INPUT_LABEL_SCHEMA = vol.Schema(
         # Length is capped here as well as in the library, because the UI
         # selector needs a number to enforce and a rejected label is a poor way
         # to discover the limit.
-        vol.Required(ATTR_LABEL): vol.All(
-            cv.string, vol.Length(max=INPUT_LABEL_MAX_LENGTH)
-        ),
+        vol.Required(ATTR_LABEL): vol.All(cv.string, vol.Length(max=INPUT_LABEL_MAX_LENGTH)),
         vol.Optional(ATTR_MEMORY, default="ALL"): vol.In(INPUT_LABEL_MEMORIES),
         **_TARGET_FIELDS,
     }
@@ -123,9 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LumagenConfigEntry) -> b
     return True
 
 
-async def _async_options_updated(
-    hass: HomeAssistant, entry: LumagenConfigEntry
-) -> None:
+async def _async_options_updated(hass: HomeAssistant, entry: LumagenConfigEntry) -> None:
     """Reload the entry so a new poll interval takes effect."""
     await hass.config_entries.async_reload(entry.entry_id)
 
@@ -240,9 +236,7 @@ def _coordinator_for(hass: HomeAssistant, call: ServiceCall) -> LumagenCoordinat
     """
     loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
     if not loaded_entries:
-        raise ServiceValidationError(
-            "No Lumagen config entries are loaded; cannot send command."
-        )
+        raise ServiceValidationError("No Lumagen config entries are loaded; cannot send command.")
     target_entry = _resolve_target_entry(hass, call, loaded_entries)
     coordinator: LumagenCoordinator = target_entry.runtime_data
     return coordinator
@@ -292,6 +286,5 @@ def _resolve_target_entry(
             if entry.entry_id in device.config_entries:
                 return entry
     raise ServiceValidationError(
-        f"None of the targeted devices are linked to a loaded Lumagen "
-        f"config entry: {device_ids!r}"
+        f"None of the targeted devices are linked to a loaded Lumagen config entry: {device_ids!r}"
     )

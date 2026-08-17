@@ -70,8 +70,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     async_add_entities(
-        LumagenBinarySensor(coordinator, description)
-        for description in BINARY_SENSORS
+        LumagenBinarySensor(coordinator, description) for description in BINARY_SENSORS
     )
 
 

@@ -50,9 +50,7 @@ class LumagenNumberDescription(NumberEntityDescription):
     set_fn: Callable[[LumagenClient, LumagenState, int], Awaitable[None]]
 
 
-async def _set_fan_speed(
-    client: LumagenClient, _state: LumagenState, level: int
-) -> None:
+async def _set_fan_speed(client: LumagenClient, _state: LumagenState, level: int) -> None:
     await client.set_fan_speed(level)
 
 
@@ -115,9 +113,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        LumagenNumber(coordinator, description) for description in NUMBERS
-    )
+    async_add_entities(LumagenNumber(coordinator, description) for description in NUMBERS)
 
 
 class LumagenNumber(LumagenBaseEntity, NumberEntity):
@@ -168,9 +164,7 @@ class LumagenNumber(LumagenBaseEntity, NumberEntity):
             self._optimistic_value = level
             self.async_write_ha_state()
             return
-        await self.entity_description.set_fn(
-            self.coordinator.client, self.coordinator.data, level
-        )
+        await self.entity_description.set_fn(self.coordinator.client, self.coordinator.data, level)
         # Track locally so the slider doesn't snap back when value_fn returns None.
         self._optimistic_value = level
         self.async_write_ha_state()

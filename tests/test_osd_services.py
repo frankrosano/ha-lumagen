@@ -161,9 +161,7 @@ async def test_send_osd_message_sets_the_bar_character_first(
     # Both went out, and the block char first.
     assert client.mock_calls.index(
         next(c for c in client.mock_calls if c[0] == "set_osd_block_char")
-    ) < client.mock_calls.index(
-        next(c for c in client.mock_calls if c[0] == "show_message")
-    )
+    ) < client.mock_calls.index(next(c for c in client.mock_calls if c[0] == "show_message"))
 
 
 async def test_send_osd_message_skips_block_char_when_absent(
@@ -277,22 +275,14 @@ async def test_set_input_label_rejects_an_unknown_bank(
 # ---------- restart_input ----------
 
 
-async def test_restart_input_defaults_to_all(
-    hass: HomeAssistant, client: MagicMock
-) -> None:
+async def test_restart_input_defaults_to_all(hass: HomeAssistant, client: MagicMock) -> None:
     """Omitting the input restarts everything, matching the client default."""
-    await hass.services.async_call(
-        DOMAIN, SERVICE_RESTART_INPUT, {}, blocking=True
-    )
+    await hass.services.async_call(DOMAIN, SERVICE_RESTART_INPUT, {}, blocking=True)
     client.restart_input.assert_awaited_once_with("all")
 
 
-async def test_restart_input_targets_one_input(
-    hass: HomeAssistant, client: MagicMock
-) -> None:
-    await hass.services.async_call(
-        DOMAIN, SERVICE_RESTART_INPUT, {ATTR_INPUT: 3}, blocking=True
-    )
+async def test_restart_input_targets_one_input(hass: HomeAssistant, client: MagicMock) -> None:
+    await hass.services.async_call(DOMAIN, SERVICE_RESTART_INPUT, {ATTR_INPUT: 3}, blocking=True)
     client.restart_input.assert_awaited_once_with(3)
 
 

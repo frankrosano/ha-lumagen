@@ -53,9 +53,7 @@ async def test_set_sharpness_level_preserves_enabled_and_sensitivity() -> None:
         )
     )
     await coord.async_set_sharpness(level=7)
-    coord.client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=7, sensitivity="H"
-    )
+    coord.client.set_sharpness.assert_awaited_once_with(enabled=True, level=7, sensitivity="H")
 
 
 async def test_set_sharpness_sensitivity_preserves_enabled_and_level() -> None:
@@ -67,9 +65,7 @@ async def test_set_sharpness_sensitivity_preserves_enabled_and_level() -> None:
         )
     )
     await coord.async_set_sharpness(sensitivity="H")
-    coord.client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=6, sensitivity="H"
-    )
+    coord.client.set_sharpness.assert_awaited_once_with(enabled=True, level=6, sensitivity="H")
 
 
 async def test_set_sharpness_enabled_preserves_level_and_sensitivity() -> None:
@@ -81,9 +77,7 @@ async def test_set_sharpness_enabled_preserves_level_and_sensitivity() -> None:
         )
     )
     await coord.async_set_sharpness(enabled=True)
-    coord.client.set_sharpness.assert_awaited_once_with(
-        enabled=True, level=5, sensitivity="H"
-    )
+    coord.client.set_sharpness.assert_awaited_once_with(enabled=True, level=5, sensitivity="H")
 
 
 async def test_sharpness_writes_remember_each_other_without_device_readback() -> None:
@@ -110,9 +104,7 @@ async def test_sharpness_defaults_when_nothing_known() -> None:
     """Moving the slider on a fresh state must not silently enable sharpening."""
     coord = _sharpness_coordinator()
     await coord.async_set_sharpness(level=3)
-    coord.client.set_sharpness.assert_awaited_once_with(
-        enabled=False, level=3, sensitivity="N"
-    )
+    coord.client.set_sharpness.assert_awaited_once_with(enabled=False, level=3, sensitivity="N")
 
 
 def test_effective_sharpness_prefers_device_state_over_last_written() -> None:
@@ -248,9 +240,7 @@ async def test_select_subtitle_shift_off_small_large_dispatch() -> None:
     await _select_subtitle_shift(client, LumagenState(), "Small")
     await _select_subtitle_shift(client, LumagenState(), "Large")
 
-    assert [c.args for c in client.set_subtitle_shift.await_args_list] == [
-        (0,), (1,), (2,)
-    ]
+    assert [c.args for c in client.set_subtitle_shift.await_args_list] == [(0,), (1,), (2,)]
 
 
 async def test_select_subtitle_shift_unknown_label_is_no_op() -> None:
@@ -271,9 +261,9 @@ async def test_select_subtitle_shift_unknown_label_is_no_op() -> None:
 def test_current_sharpness_sensitivity_label(
     sensitivity: SharpnessSensitivity | None, expected: str | None
 ) -> None:
-    assert _current_sharpness_sensitivity(
-        LumagenState(sharpness_sensitivity=sensitivity)
-    ) == expected
+    assert (
+        _current_sharpness_sensitivity(LumagenState(sharpness_sensitivity=sensitivity)) == expected
+    )
 
 
 # Sanity that the existing aspect helper still passes (regression after edits).
@@ -313,9 +303,7 @@ async def test_hdr_mapping_max_nits_set_preserves_gamma_mode() -> None:
 
     await entity.async_set_native_value(1500)
 
-    client.set_hdr_intensity_mapping.assert_awaited_once_with(
-        display_max_nits=1500, gamma_mode="H"
-    )
+    client.set_hdr_intensity_mapping.assert_awaited_once_with(display_max_nits=1500, gamma_mode="H")
     # Coordinator's optimistic state updates so subsequent reads reflect it.
     assert coord.hdr_mapping_max_nits == 1500
 
@@ -338,9 +326,7 @@ async def test_hdr_gamma_mode_set_preserves_max_nits() -> None:
 
     await entity.async_select_option("HDR")
 
-    client.set_hdr_intensity_mapping.assert_awaited_once_with(
-        display_max_nits=1000, gamma_mode="H"
-    )
+    client.set_hdr_intensity_mapping.assert_awaited_once_with(display_max_nits=1000, gamma_mode="H")
     assert coord.hdr_mapping_gamma_mode == "H"
 
 

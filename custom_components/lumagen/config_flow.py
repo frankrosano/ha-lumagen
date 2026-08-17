@@ -70,9 +70,7 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
         """Expose the poll-interval options flow."""
         return LumagenOptionsFlow()
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Single-step selection of a serial port."""
         errors: dict[str, str] = {}
 
@@ -104,9 +102,7 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
             }
         )
-        return self.async_show_form(
-            step_id="user", data_schema=schema, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
 
 class LumagenOptionsFlow(OptionsFlow):
@@ -120,17 +116,13 @@ class LumagenOptionsFlow(OptionsFlow):
     ``LumagenClient`` at construction time.
     """
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(
                 data={CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL])}
             )
 
-        current = self.config_entry.options.get(
-            CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
-        )
+        current = self.config_entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
         schema = vol.Schema(
             {
                 vol.Required(CONF_POLL_INTERVAL, default=current): NumberSelector(

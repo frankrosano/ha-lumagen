@@ -156,25 +156,19 @@ _HDR_GAMMA_WIRE_TO_LABEL = {v: k for k, v in _HDR_GAMMA_LABEL_TO_WIRE.items()}
 # --- select_fn implementations ---
 
 
-async def _select_aspect(
-    client: LumagenClient, _state: LumagenState, value: str
-) -> None:
+async def _select_aspect(client: LumagenClient, _state: LumagenState, value: str) -> None:
     cmd = _ASPECT_COMMANDS.get(value)
     if cmd is not None:
         await client.send_command(cmd)
 
 
-async def _select_memory(
-    client: LumagenClient, _state: LumagenState, value: str
-) -> None:
+async def _select_memory(client: LumagenClient, _state: LumagenState, value: str) -> None:
     command = _MEMORY_COMMANDS.get(value)
     if command is not None:
         await client.send_command(command)
 
 
-async def _select_subtitle_shift(
-    client: LumagenClient, _state: LumagenState, value: str
-) -> None:
+async def _select_subtitle_shift(client: LumagenClient, _state: LumagenState, value: str) -> None:
     level = _SUBTITLE_SHIFT_TO_LEVEL.get(value)
     if level is not None:
         await client.set_subtitle_shift(level)
@@ -194,7 +188,7 @@ def _closest_aspect_label(raw: str | None) -> str | None:
         return None
     try:
         value = int(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return min(
         _CONTENT_ASPECT_TO_LABEL,
@@ -288,9 +282,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        LumagenSelect(coordinator, description) for description in SELECTS
-    )
+    async_add_entities(LumagenSelect(coordinator, description) for description in SELECTS)
 
 
 class LumagenSelect(LumagenBaseEntity, SelectEntity):
@@ -321,9 +313,7 @@ class LumagenSelect(LumagenBaseEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         if self.entity_description.key == "hdr_gamma_mode":
-            label = _HDR_GAMMA_WIRE_TO_LABEL.get(
-                self.coordinator.hdr_mapping_gamma_mode
-            )
+            label = _HDR_GAMMA_WIRE_TO_LABEL.get(self.coordinator.hdr_mapping_gamma_mode)
             return label if label in (self.entity_description.options or []) else None
         current = self.entity_description.current_fn(self.coordinator.data)
         options = self.entity_description.options or []
