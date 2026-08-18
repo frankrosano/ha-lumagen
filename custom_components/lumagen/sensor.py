@@ -198,14 +198,28 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.input_config,
     ),
-    # Tri-state counterpart to the auto_aspect switch, which can only say
-    # on/off. "Disabled" means configured but currently inhibited — a state
-    # the switch cannot represent.
+    # Tri-state counterpart to the auto_aspect switch. Confirmed on hardware
+    # (Radiance Pro 4242, firmware 030326): the field is populated and payload
+    # index 26 is correctly mapped. Absent on firmware 030225, where it reads
+    # "unknown".
     #
-    # Reads "unknown" unless the Lumagen's firmware appends this field to the
-    # Full v5 push. It is absent on firmware 030225, and the index is
-    # empirically mapped rather than documented (see aiolumagen's protocol
-    # module). Kept diagnostic so an unknown reading isn't front and centre.
+    # Stays DIAGNOSTIC, and the switch deliberately keeps using the ZQI54
+    # boolean, because in practice this field carries no more information:
+    # measured against ZQI54 it always agrees, offset by one.
+    #
+    #   auto aspect on            -> index 26 = 2, ZQI54 = 1
+    #   turned off with 'V'       -> index 26 = 1, ZQI54 = 0
+    #   inhibited by subtitle shift -> index 26 = 1, ZQI54 = 0
+    #
+    # So "Disabled" does NOT distinguish configured-but-inhibited from plain
+    # off — a deliberate off and an inhibited on report identically. Do not
+    # drive the switch's is_on from this field: treating "Disabled" as on would
+    # show the switch enabled right after the user turned auto aspect off.
+    # ("Off", index 26 = 0, has never been observed on this firmware.)
+    #
+    # The one genuine advantage is latency, not content: index 26 rides the
+    # Full v5 push while ZQI54 needs a poll. Acting on that belongs upstream in
+    # aiolumagen, not here.
     LumagenSensorDescription(
         key="auto_aspect_status",
         translation_key="auto_aspect_status",
