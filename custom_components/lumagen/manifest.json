@@ -1,7 +1,7 @@
 {
   "domain": "lumagen",
   "name": "Lumagen Radiance Pro",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "after_dependencies": ["esphome"],
   "codeowners": ["@frankrosano"],
   "config_flow": true,
@@ -13,6 +13,6 @@
   "loggers": ["aiolumagen"],
   "quality_scale": "bronze",
   "requirements": [
-    "aiolumagen@git+https://github.com/frankrosano/aiolumagen.git@v0.9.0"
+    "aiolumagen@git+https://github.com/frankrosano/aiolumagen.git@v0.10.0"
   ]
 }

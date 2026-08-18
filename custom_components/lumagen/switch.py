@@ -55,21 +55,26 @@ async def _set_game_mode(client: LumagenClient, _state: LumagenState, enabled: b
 
 
 async def _set_auto_aspect(client: LumagenClient, _state: LumagenState, enabled: bool) -> None:
-    """Toggle automatic aspect detection, then re-query to confirm.
+    """Toggle automatic aspect detection.
 
     There's no ``client.set_auto_aspect`` wrapper (the on/off commands are
-    the same ``~``/``V`` aspect commands the client exposes generically),
-    so this sends the raw command and follows with ``ZQI54`` to pull the
-    result back into ``state.auto_aspect`` — auto-aspect isn't part of the
-    Full v5 push stream. Mirrors the write-then-query shape of
-    ``client.set_game_mode``. ``refresh=False`` because the ``ZQI54`` below
-    is the deliberate refresh.
+    the same ``~``/``V`` aspect commands the client exposes generically), so
+    this sends the raw command.
+
+    No follow-up query, unlike ``_set_game_mode``. Auto aspect *does* ride the
+    Full v5 push at payload index 26, and the device emits an unsolicited
+    ``!I25`` on every auto-aspect change — verified on hardware by listening with
+    no query outstanding. aiolumagen v0.10.0 feeds ``state.auto_aspect`` from that
+    index, so the state arrives on its own and faster than a query would return
+    it. The previous ``query_auto_aspect()`` here was redundant work.
+
+    ``refresh=False`` because there is nothing to refresh: the push is the
+    refresh.
     """
     await client.send_command(
         Aspect.AUTO_ENABLE if enabled else Aspect.AUTO_DISABLE,
         refresh=False,
     )
-    await client.query_auto_aspect()
 
 
 SWITCHES: tuple[LumagenSwitchDescription, ...] = (

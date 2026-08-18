@@ -164,8 +164,7 @@ def test_auto_aspect_status_reports_enum_value_and_declares_all_options() -> Non
 def test_auto_aspect_status_unknown_on_firmware_that_omits_it() -> None:
     """The field is absent on firmware 030225, so the sensor reads unknown.
 
-    Deliberate: the boolean auto_aspect switch stays authoritative (it comes
-    from the documented ZQI54 query), and this tri-state sensor only adds
-    detail where the firmware provides it.
+    On such firmware aiolumagen falls back to polling ZQI54, so the auto_aspect
+    switch still works; only this diagnostic sensor goes unknown.
     """
     assert _BY_KEY["auto_aspect_status"].value_fn(LumagenState()) is None

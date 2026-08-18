@@ -348,3 +348,40 @@ async def test_hdr_gamma_mode_unknown_label_is_no_op() -> None:
     await entity.async_select_option("Bogus")
 
     client.set_hdr_intensity_mapping.assert_not_called()
+
+
+async def test_auto_aspect_switch_sends_command_without_a_follow_up_query() -> None:
+    """Auto aspect rides the Full v5 push, so no confirming query is needed.
+
+    Regression guard. This used to call ``query_auto_aspect()`` after the write,
+    because auto aspect was believed to be absent from the push stream. It isn't:
+    payload index 26 of ``!I25`` carries it, the device emits an unsolicited
+    ``!I25`` on every auto-aspect change, and aiolumagen v0.10.0 feeds
+    ``state.auto_aspect`` from that index. The query was redundant work that also
+    arrived later than the push it duplicated.
+
+    Unlike game mode, which genuinely has no push equivalent and still queries.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.lumagen.switch import SWITCHES
+
+    description = next(d for d in SWITCHES if d.key == "auto_aspect")
+    assert description.set_fn is not None
+
+    client = MagicMock()
+    client.send_command = AsyncMock()
+    client.query_auto_aspect = AsyncMock()
+
+    await description.set_fn(client, LumagenState(), True)
+    client.send_command.assert_awaited_once()
+    assert client.send_command.await_args.kwargs.get("refresh") is False
+    client.query_auto_aspect.assert_not_awaited()
+
+    client.send_command.reset_mock()
+    await description.set_fn(client, LumagenState(), False)
+    on_cmd = client.send_command.await_args.args[0]
+    client.send_command.reset_mock()
+    await description.set_fn(client, LumagenState(), True)
+    off_cmd = client.send_command.await_args.args[0]
+    assert on_cmd != off_cmd, "enable and disable must send different commands"
