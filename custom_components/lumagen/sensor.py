@@ -205,17 +205,19 @@ SENSORS: tuple[LumagenSensorDescription, ...] = (
     #
     # Stays DIAGNOSTIC, and the switch deliberately keeps using the ZQI54
     # boolean, because in practice this field carries no more information:
-    # measured against ZQI54 it always agrees, offset by one.
+    # measured against ZQI54 it always agrees, offset by one. Three independent
+    # ways of turning auto aspect off all report identically:
     #
-    #   auto aspect on            -> index 26 = 2, ZQI54 = 1
-    #   turned off with 'V'       -> index 26 = 1, ZQI54 = 0
+    #   auto aspect on              -> index 26 = 2, ZQI54 = 1
+    #   off via serial 'V'          -> index 26 = 1, ZQI54 = 0
+    #   off via the OSD menu        -> index 26 = 1, ZQI54 = 0
     #   inhibited by subtitle shift -> index 26 = 1, ZQI54 = 0
     #
     # So "Disabled" does NOT distinguish configured-but-inhibited from plain
-    # off — a deliberate off and an inhibited on report identically. Do not
-    # drive the switch's is_on from this field: treating "Disabled" as on would
-    # show the switch enabled right after the user turned auto aspect off.
-    # ("Off", index 26 = 0, has never been observed on this firmware.)
+    # off. Do not drive the switch's is_on from this field: treating "Disabled"
+    # as on would show the switch enabled right after the user turned auto
+    # aspect off. ("Off", index 26 = 0, has never been observed -- not even with
+    # no source locked, which still reports 2 when auto aspect is enabled.)
     #
     # The one genuine advantage is latency, not content: index 26 rides the
     # Full v5 push while ZQI54 needs a poll. Acting on that belongs upstream in
