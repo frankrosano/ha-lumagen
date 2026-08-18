@@ -227,6 +227,9 @@
       },
       "restart_inputs": {
         "name": "Restart all inputs"
+      },
+      "restart_outputs": {
+        "name": "Restart outputs"
       }
     },
     "select": {

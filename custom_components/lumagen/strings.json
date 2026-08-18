@@ -128,7 +128,8 @@
       "query_status": { "name": "Query status" },
       "show_aspect": { "name": "Show aspect on screen" },
       "clear_osd_message": { "name": "Clear OSD message" },
-      "restart_inputs": { "name": "Restart all inputs" }
+      "restart_inputs": { "name": "Restart all inputs" },
+      "restart_outputs": { "name": "Restart outputs" }
     },
     "select": {
       "aspect_select": { "name": "Aspect ratio" },

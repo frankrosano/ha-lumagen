@@ -121,6 +121,20 @@ BUTTONS: tuple[LumagenButtonDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         press_fn=lambda c: c.restart_input("all"),
     ),
+    # The other direction: re-establishes the link toward the display rather
+    # than toward a source. For a projector showing nothing, stuck at the wrong
+    # resolution, or having lost HDR after something downstream changed — an AVR
+    # power-cycling, a switch relearning. The picture drops and re-syncs, which
+    # is the mechanism working.
+    #
+    # No per-output variant to offer: the underlying command takes no argument
+    # and acts on the output path as a whole, so a button is the whole surface.
+    LumagenButtonDescription(
+        key="restart_outputs",
+        translation_key="restart_outputs",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.restart_outputs(),
+    ),
 )
 
 
