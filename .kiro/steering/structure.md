@@ -20,7 +20,10 @@ ha-lumagen/
 │       ├── select.py                    # Input / Aspect / Memory / Sharpness sensitivity / Subtitle shift
 │       ├── switch.py                    # Sharpness enabled, Game mode
 │       ├── number.py                    # Sharpness level (0-7), Min fan speed (0-9)
-│       ├── services.yaml                # send_raw_command service schema
+│       ├── update.py                    # Firmware update entity (version compare, install, progress)
+│       ├── firmware.py                  # Install orchestration: download, power-on/settle, client pause, restore
+│       ├── release_coordinator.py       # Daily lumagen.com release-index check (HTTP here, parsing in aiolumagen)
+│       ├── services.yaml                # service schemas (incl. qualify_firmware_transfer)
 │       ├── strings.json                 # English UI strings (source of truth for translations)
 │       └── translations/                # generated/translated locale JSON
 └── tests/
@@ -28,7 +31,12 @@ ha-lumagen/
     ├── test_config_flow.py
     ├── test_select.py
     ├── test_switch_number_select.py     # Phase 1 entity dispatch helpers
-    └── test_send_raw_command.py         # service registration / dispatch / validation
+    ├── test_send_raw_command.py         # service registration / dispatch / validation
+    ├── firmware_helpers.py              # synthetic release page / zip, mocked client, entry setup
+    ├── test_release_coordinator.py      # release-index fetch, fail-closed, channel selection
+    ├── test_update.py                   # update entity: versions, channels, gating, progress
+    ├── test_firmware_install.py         # install orchestration, power-restore branches, error mapping
+    └── test_firmware_gating.py          # services refused mid-update, deferred reload, qualify service
 ```
 
 ## Conventions

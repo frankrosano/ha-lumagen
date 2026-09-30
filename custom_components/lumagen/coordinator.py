@@ -9,7 +9,9 @@ only job of :meth:`_async_update_data` is to seed the initial state during
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 from aiolumagen import (
@@ -26,10 +28,12 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DEFAULT_POLL_INTERVAL, DOMAIN
+from .const import DEFAULT_POLL_INTERVAL, DOMAIN, FIRMWARE_POWER_QUERY_INTERVAL
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from .release_coordinator import LumagenReleaseCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,6 +81,77 @@ class LumagenCoordinator(DataUpdateCoordinator[LumagenState]):
         self._last_sharpness_enabled: bool | None = None
         self._last_sharpness_level: int | None = None
         self._last_sharpness_sensitivity: SharpnessSensitivity | None = None
+
+        # Firmware-update coordination. While ``firmware_update_active`` is set
+        # the client is stopped (serial_proxy serves one subscriber, and the
+        # firmware session needs it), so every entity except the update entity
+        # reports unavailable and every domain service refuses. The lock makes
+        # an install per-entry exclusive; ``reload_pending`` records an options
+        # change that arrived mid-install, so its reload runs afterwards rather
+        # than tearing the update entity down mid-flash.
+        self.firmware_update_active: bool = False
+        self.firmware_lock = asyncio.Lock()
+        self.reload_pending: bool = False
+        self.release_coordinator: LumagenReleaseCoordinator | None = None
+
+    @callback
+    def async_set_firmware_update_active(self, active: bool) -> None:
+        """Flip the update gate and let every entity re-evaluate availability."""
+        self.firmware_update_active = active
+        self.async_update_listeners()
+
+    async def async_pause_client(self) -> None:
+        """Release the serial link for a firmware session. Idempotent."""
+        await self.client.stop()
+
+    async def async_resume_client(self) -> bool:
+        """Restart the client after a firmware session.
+
+        Returns False instead of raising, because the caller is in a
+        ``finally`` and must not mask the session's own outcome. It does not
+        schedule a reload itself: the caller does that as its very last step,
+        so the reload can't tear the update entity down while it is still
+        cleaning up.
+        """
+        try:
+            await self.client.start()
+        except (LumagenError, OSError) as err:
+            _LOGGER.warning("Could not restart the Lumagen client after the update: %s", err)
+            return False
+        return True
+
+    async def async_wait_for_power(self, on: bool, timeout: float) -> None:
+        """Wait until the Lumagen reports ``power_on is on``.
+
+        Re-queries power every ``FIRMWARE_POWER_QUERY_INTERVAL`` while waiting,
+        because the client's own poll can be far apart. Raises the builtin
+        :class:`TimeoutError` if the state never arrives.
+        """
+        if self.client.state.power_on is on:
+            return
+        reached = asyncio.Event()
+
+        @callback
+        def _check() -> None:
+            if self.client.state.power_on is on:
+                reached.set()
+
+        unsubscribe = self.async_add_listener(_check)
+        try:
+            async with asyncio.timeout(timeout):
+                while not reached.is_set():
+                    try:
+                        await self.client.query_power()
+                    except LumagenError as err:
+                        _LOGGER.debug("Power query while waiting failed: %s", err)
+                    with suppress(TimeoutError):
+                        async with asyncio.timeout(FIRMWARE_POWER_QUERY_INTERVAL):
+                            await reached.wait()
+                    # A push can land without a listener call if the coordinator
+                    # already held equal data; re-check the client directly.
+                    _check()
+        finally:
+            unsubscribe()
 
     async def _async_setup(self) -> None:
         """Start the aiolumagen client; called once by the coordinator.

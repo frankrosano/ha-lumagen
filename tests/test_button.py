@@ -58,9 +58,7 @@ def test_restart_outputs_takes_no_argument() -> None:
     """
     assert "restart_outputs" in _BY_KEY
     # No sibling per-output keys should appear.
-    assert [k for k in _BY_KEY if k.startswith("restart_output")] == [
-        "restart_outputs"
-    ]
+    assert [k for k in _BY_KEY if k.startswith("restart_output")] == ["restart_outputs"]
 
 
 @pytest.mark.parametrize(

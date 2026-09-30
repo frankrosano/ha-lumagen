@@ -41,10 +41,13 @@ from homeassistant.helpers.selector import (
 
 from . import coordinator as _coordinator
 from .const import (
+    CONF_FIRMWARE_CHANNEL,
     CONF_POLL_INTERVAL,
     CONF_URL,
+    DEFAULT_FIRMWARE_CHANNEL,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
+    FIRMWARE_CHANNELS,
     MAX_POLL_INTERVAL,
     MIN_POLL_INTERVAL,
     VALIDATION_TIMEOUT,
@@ -106,23 +109,34 @@ class LumagenConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class LumagenOptionsFlow(OptionsFlow):
-    """Tune how often the integration polls the Lumagen.
+    """Tune how often the integration polls the Lumagen, and which firmware to offer.
 
-    Only the fields the Lumagen never pushes (sharpness, game mode, auto
+    The firmware channel picks which lumagen.com releases the update entity
+    offers: beta (the default — Lumagen rarely posts Production builds) or
+    production only.
+
+    For polling, only the fields the Lumagen never pushes (sharpness, game mode, auto
     aspect, display Rec.2020, source HDR metadata) are affected by this —
     everything in the Full v5 report still arrives in real time regardless.
 
     Saving reloads the config entry, because the interval is baked into the
-    ``LumagenClient`` at construction time.
+    ``LumagenClient`` at construction time (deferred while a firmware update
+    runs).
     """
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(
-                data={CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL])}
+                data={
+                    CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
+                    CONF_FIRMWARE_CHANNEL: user_input[CONF_FIRMWARE_CHANNEL],
+                }
             )
 
         current = self.config_entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+        current_channel = self.config_entry.options.get(
+            CONF_FIRMWARE_CHANNEL, DEFAULT_FIRMWARE_CHANNEL
+        )
         schema = vol.Schema(
             {
                 vol.Required(CONF_POLL_INTERVAL, default=current): NumberSelector(
@@ -133,7 +147,14 @@ class LumagenOptionsFlow(OptionsFlow):
                         unit_of_measurement="s",
                         mode=NumberSelectorMode.BOX,
                     )
-                )
+                ),
+                vol.Required(CONF_FIRMWARE_CHANNEL, default=current_channel): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(FIRMWARE_CHANNELS),
+                        translation_key="firmware_channel",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

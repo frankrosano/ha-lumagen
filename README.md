@@ -86,10 +86,30 @@ Separately, note that Full v5 is a **firmware requirement**, not just a menu pre
 - **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D), Sharpness sensitivity (Normal/High), Subtitle shift (Off/Small/Large), HDR gamma mode (Auto/HDR/SDR)
 - **Switches**: Sharpness, Game mode
 - **Numbers**: Sharpness level (0–7), Minimum fan speed (0–9), HDR mapping max nits (0 to disable; 50–10000 to set display peak)
+- **Update**: Firmware — offers new Radiance Pro firmware from lumagen.com and installs it (see below)
+
+## Firmware updates
+
+The **Firmware** update entity watches Lumagen's [release page](https://www.lumagen.com/software-updates/radiance-pro-updates) and can install a new release from Home Assistant.
+
+> **Use at your own risk.** This is an independent, reverse-engineered implementation with no association with or endorsement by Lumagen, Inc. It has been tested on one Radiance Pro 4242. Read the [aiolumagen firmware warning](https://github.com/frankrosano/aiolumagen#firmware-updates) before your first install.
+
+- **Checking.** The release page is checked once a day. The updater zip (~3 MB) is downloaded only when you press **Install**, and is handled in memory. Disable the entity to stop all checks.
+- **Channel.** Set under the integration's **Configure** options. **Beta** (the default) offers the newest release of any label, since Lumagen rarely posts Production builds; "Production candidate" counts as beta. **Production** offers only releases labelled Production.
+- **Standby.** If the Lumagen is in standby when you install, it's powered on automatically, given 15 seconds to finish starting up, and then updated.
+- **The unit powers off at the end of a successful update. That's expected**: it's how the Lumagen loads new firmware. Power is then restored to how it was: if it was on, it's powered back on; if it was off, it's left off.
+- **During the update** every other Lumagen entity shows as unavailable and the `lumagen.*` services refuse. The update entity shows progress. A section-0-only update takes about a minute; one that also rewrites section 1 takes about five.
+- **Don't restart Home Assistant or reload the integration while an update is running.** Changing the integration's options mid-update is safe: the reload waits until the update finishes.
+- **If an update fails**, read the message and retry before power-cycling the unit. An update that stops before touching live firmware leaves it unchanged.
+
+### Qualify the transfer first
+
+Updates from Home Assistant travel over its own ESPHome connection, which hasn't been qualified on hardware the way the aiolumagen command-line harness has. Before your first real install, run **`lumagen.qualify_firmware_transfer`** (admin only) several times. It runs the whole pipeline — download, power-on if needed, transfer, verify — but writes only the scratch region and never promotes it, so live firmware is untouched and the unit isn't powered down. Each run posts a notification with the flush statistics; retries should stay at zero.
 
 ## Service
 
 - `lumagen.send_raw_command` — send any RS-232 command directly to the Lumagen. Useful for advanced features that aren't surfaced as entities (e.g. HDR test-pattern info frames during calibration). Pass `command` and optional `cr` (most `ZY`-prefixed commands need `cr: true`).
+- `lumagen.qualify_firmware_transfer` — admin only. Exercise the firmware transfer path through Home Assistant, writing the scratch region only. See [Qualify the transfer first](#qualify-the-transfer-first).
 
 ## Status
 

@@ -234,9 +234,48 @@ async def test_options_flow_defaults_to_60_and_saves(hass: HomeAssistant) -> Non
         result["flow_id"], user_input={CONF_POLL_INTERVAL: 15}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    # Stored as an int — the NumberSelector hands back a float.
-    assert entry.options == {CONF_POLL_INTERVAL: 15}
+    # Stored as an int — the NumberSelector hands back a float. The firmware
+    # channel isn't submitted here, so the schema default (beta) is stored.
+    assert entry.options == {CONF_POLL_INTERVAL: 15, "firmware_channel": "beta"}
     assert isinstance(entry.options[CONF_POLL_INTERVAL], int)
+
+
+async def test_options_flow_firmware_channel_defaults_to_beta(hass: HomeAssistant) -> None:
+    """Beta is the default: Lumagen rarely posts Production builds."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={CONF_URL: "socket://10.0.0.5:5000"}, unique_id="chan-default"
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    schema = result["data_schema"].schema
+    key = next(k for k in schema if k == "firmware_channel")
+    assert key.default() == "beta"
+    assert schema[key].config["options"] == ["beta", "production"]
+
+
+async def test_options_flow_saves_production_and_keeps_poll_interval(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_URL: "socket://10.0.0.5:5000"},
+        unique_id="chan-prod",
+        options={CONF_POLL_INTERVAL: 30},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    schema = result["data_schema"].schema
+    poll_key = next(k for k in schema if k == CONF_POLL_INTERVAL)
+    assert poll_key.default() == 30
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={CONF_POLL_INTERVAL: 30, "firmware_channel": "production"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options == {CONF_POLL_INTERVAL: 30, "firmware_channel": "production"}
 
 
 def test_default_poll_interval_is_within_its_own_selectable_range() -> None:

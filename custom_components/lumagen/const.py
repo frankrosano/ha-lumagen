@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Final
 
 from homeassistant.const import Platform
@@ -83,7 +84,92 @@ PLATFORMS: Final = (
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
+    Platform.UPDATE,
 )
+
+# ---------------------------------------------------------------------------
+# Firmware updates
+# ---------------------------------------------------------------------------
+
+# Which releases the update entity offers. Beta is the default because Lumagen
+# rarely posts Production builds — nearly every release since 030225 has been
+# labelled Beta, so a Production-only default would almost never offer
+# anything. The values equal aiolumagen.firmware.ReleaseChannel's, so an option
+# value converts with ReleaseChannel(value). There is deliberately no "off":
+# disabling the update entity already stops every check.
+CONF_FIRMWARE_CHANNEL: Final = "firmware_channel"
+FIRMWARE_CHANNEL_BETA: Final = "beta"
+FIRMWARE_CHANNEL_PRODUCTION: Final = "production"
+FIRMWARE_CHANNELS: Final = (FIRMWARE_CHANNEL_BETA, FIRMWARE_CHANNEL_PRODUCTION)
+DEFAULT_FIRMWARE_CHANNEL: Final = FIRMWARE_CHANNEL_BETA
+
+# Lumagen posts a release every month or two; a daily check is prompt enough
+# and polite to a vendor site we scrape. The page is ~450 KB.
+RELEASE_CHECK_INTERVAL: Final = timedelta(hours=24)
+RELEASE_FETCH_TIMEOUT: Final = 30.0
+# The updater zip is ~3 MB, fetched only when Install is pressed.
+UPDATER_DOWNLOAD_TIMEOUT: Final = 180.0
+# Size caps on what we'll read over HTTP. Both are ~8-10x the real sizes, so a
+# redesign that grows the page won't trip them but a runaway response will.
+# The archive's own caps (entry count, uncompressed EXE size) live in aiolumagen.
+MAX_RELEASE_INDEX_BYTES: Final = 4 * 1024 * 1024
+MAX_UPDATER_ZIP_BYTES: Final = 32 * 1024 * 1024
+
+# Hosts the updater zip may be fetched from, checked (with https) on the listed
+# URL and on every redirect hop before it is followed. The listing is on
+# www.lumagen.com, whose /s/<zip> links answer 302 to Squarespace's asset CDN,
+# static1.squarespace.com. Deliberately exact rather than *.squarespace.com:
+# Squarespace subdomains also host other people's sites. If the CDN host ever
+# moves, downloads fail closed with firmware_download_failed and the log names
+# the refused URL — widen this list then, not speculatively.
+FIRMWARE_DOWNLOAD_HOSTS: Final = frozenset(
+    {"www.lumagen.com", "lumagen.com", "static1.squarespace.com"}
+)
+# The real chain is one hop; anything past a few is a loop or a misconfiguration.
+FIRMWARE_DOWNLOAD_MAX_REDIRECTS: Final = 5
+
+# Descriptive, so Lumagen can identify (and contact) the source of the checks.
+FIRMWARE_USER_AGENT: Final = "ha-lumagen (+https://github.com/frankrosano/ha-lumagen)"
+
+# The only transfer rate qualified on hardware: the vendor's own, and the one
+# aiolumagen's flush barrier was designed for (aiolumagen.firmware
+# DEFAULT_UPDATE_BAUDRATE). 115200 in particular is known-bad.
+FIRMWARE_UPDATE_BAUDRATE: Final = 230400
+
+# How long to wait for the Lumagen to report power-on after we ask for it.
+FIRMWARE_POWER_ON_TIMEOUT: Final = 60.0
+
+# Extra wait after the Lumagen reports power-on and before any firmware command.
+#
+# Derived, not measured. aiolumagen's preflight (firmware/session.py, the
+# standby gate) only checks that ZQS02 reports "on"; it does not wait for the
+# unit to finish coming up. FIRMWARE_UPDATE_PROTOCOL.md (lumagen-research) §I.2
+# and §4.1 say standby services no updater commands and that the vendor's
+# Tip0006 procedure opens with "Turn the Radiance power on", but give no
+# duration. The only documented startup timing is the ~10 s window after
+# power-on in which boot mode listens (§4.1's "…within 10 SECONDS" message;
+# lumagen-research probe_proxy.py). 15 s is that window plus 5 s of margin —
+# negligible against a 1-5 minute transfer. The install logs the observed
+# power-on time so this can be confirmed on hardware.
+FIRMWARE_POWER_ON_SETTLE: Final = 15.0
+
+# Bound on the best-effort standby sent when an install is cancelled (HA
+# stopping) after we auto-powered the unit but before the session started.
+# Short, because it runs while the task is being cancelled.
+FIRMWARE_CANCEL_STANDBY_TIMEOUT: Final = 5.0
+
+# After a promoted update the unit powers itself down (Z97). This bounds the
+# wait for the client to reconnect and see standby before powering it back on.
+FIRMWARE_POST_UPDATE_STANDBY_TIMEOUT: Final = 180.0
+
+# How often to re-ask for power state while waiting on a transition. The
+# client's own poll may be minutes apart; this keeps the wait responsive.
+FIRMWARE_POWER_QUERY_INTERVAL: Final = 5.0
+
+# Admin-only service writing section 0 to the scratch region without promoting:
+# the full transfer path with live firmware untouched. It exists to qualify
+# HA's esphome-hass:// transport before the first real install.
+SERVICE_QUALIFY_FIRMWARE_TRANSFER: Final = "qualify_firmware_transfer"
 
 # How long to wait for a device-info response during config-flow validation.
 VALIDATION_TIMEOUT: Final = 5.0

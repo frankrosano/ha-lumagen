@@ -26,11 +26,21 @@
         "title": "Lumagen options",
         "description": "Most state (input, resolution, HDR, colorspace, power) is reported by the Lumagen the moment it changes, and is unaffected by this setting. A few settings are never reported and can only be read by asking for them: sharpness, game mode, auto aspect detection, Rec.2020 display support and HDR source metadata. When you change one of those with the Lumagen's own remote, it can take up to one polling interval to show up here. Lower the interval for a snappier response, at the cost of more traffic on the 9600-baud serial link.",
         "data": {
-          "poll_interval": "Polling interval"
+          "poll_interval": "Polling interval",
+          "firmware_channel": "Firmware release channel"
         },
         "data_description": {
-          "poll_interval": "Seconds between status polls. Default is 15. While the Lumagen is off, only a lightweight power check is sent."
+          "poll_interval": "Seconds between status polls. Default is 15. While the Lumagen is off, only a lightweight power check is sent.",
+          "firmware_channel": "Which lumagen.com releases the firmware update entity offers. Beta is the default because Lumagen rarely posts Production builds; it offers the newest release of any label, including \"Production candidate\". Production offers only releases labelled Production."
         }
+      }
+    }
+  },
+  "selector": {
+    "firmware_channel": {
+      "options": {
+        "beta": "Beta (newest release)",
+        "production": "Production only"
       }
     }
   },
@@ -152,6 +162,9 @@
       "game_mode": { "name": "Game mode" },
       "auto_aspect": { "name": "Auto aspect detection" }
     },
+    "update": {
+      "firmware": { "name": "Firmware" }
+    },
     "number": {
       "sharpness_level": { "name": "Sharpness level" },
       "fan_speed": { "name": "Minimum fan speed" },
@@ -246,6 +259,81 @@
           "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
         }
       }
+    },
+    "qualify_firmware_transfer": {
+      "name": "Qualify firmware transfer",
+      "description": "Admin only. Runs the full firmware-update pipeline for the newest release on your channel (download, power-on if needed, transfer, verify) but writes section 0 to the scratch region only and never promotes it. Live firmware is untouched and the Lumagen is not powered down. Run this several times before the first real install from Home Assistant, to qualify the transfer path through Home Assistant's ESPHome connection.",
+      "fields": {
+        "device_id": {
+          "name": "Lumagen",
+          "description": "Which Lumagen to qualify. Only needed if you have more than one configured; leave empty to use your only Lumagen."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "firmware_update_active": {
+      "message": "A Lumagen firmware update is in progress. Try again once it finishes."
+    },
+    "firmware_update_in_progress": {
+      "message": "A firmware update is already running for this Lumagen."
+    },
+    "firmware_power_unknown": {
+      "message": "The Lumagen's power state isn't known yet, so the update can't start safely. Wait for it to report in, then retry."
+    },
+    "firmware_power_on_timeout": {
+      "message": "The Lumagen did not turn on for the firmware update ({error}). Nothing was written; turn it on and retry."
+    },
+    "firmware_no_release": {
+      "message": "No firmware release is known for the selected channel yet. The release check may not have run or may have failed; see the logs."
+    },
+    "firmware_not_newer": {
+      "message": "The offered firmware is not newer than what the Lumagen is running, so it won't be installed."
+    },
+    "firmware_download_failed": {
+      "message": "Could not download the Lumagen updater ({error}). The Lumagen was not touched."
+    },
+    "firmware_image_invalid": {
+      "message": "The downloaded updater is unusable ({error}). The Lumagen was not touched."
+    },
+    "firmware_aborted": {
+      "message": "The firmware update stopped before touching live firmware ({error}). Nothing changed; you can retry."
+    },
+    "firmware_connection_failed": {
+      "message": "Could not open the serial bridge for the firmware update ({error}). Something else may be holding it, or the ESPHome device may be offline."
+    },
+    "firmware_failed": {
+      "message": "Firmware update failed: {error}"
+    },
+    "firmware_failed_notification": {
+      "message": "The firmware update failed and its outcome could not be confirmed:\n\n{error}\n\nThe Lumagen was deliberately left as it is. Retry the update before power-cycling it."
+    },
+    "firmware_repower_failed": {
+      "message": "Firmware {version} was installed, and the Lumagen powered off to load it as expected, but it could not be powered back on automatically. Turn it on with the remote or the Power on button."
+    },
+    "firmware_update_complete_notification": {
+      "message": "Firmware {version} is installed. The Lumagen powered off to load the new firmware, which is expected. {power}"
+    },
+    "firmware_power_restored": {
+      "message": "It has been powered back on, as it was before the update."
+    },
+    "firmware_power_left_off": {
+      "message": "It was off before the update, so it has been left off."
+    },
+    "firmware_power_standby": {
+      "message": "It was off before the update, so it has been returned to standby."
+    },
+    "firmware_power_unchanged": {
+      "message": "Its power state was left unchanged."
+    },
+    "firmware_power_restore_failed": {
+      "message": "Its previous power state could not be restored."
+    },
+    "firmware_qualify_result_notification": {
+      "message": "Transfer qualification with firmware {version} finished. Written to scratch: {written}. Flush calls: {flush_calls}, retries: {flush_retries}. Notes: {notes}. Live firmware was not touched."
+    },
+    "firmware_notification_title": {
+      "message": "Lumagen firmware update"
     }
   }
 }

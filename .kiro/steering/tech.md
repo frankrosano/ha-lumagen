@@ -78,6 +78,10 @@ To test against a real Lumagen during development, point the integration at the 
 |---|---|
 | `LumagenConnectionError` | Raise `ConfigEntryNotReady` from `async_setup_entry`, or mark device unavailable from the coordinator |
 | `LumagenCommandError` | Log a warning; don't surface to the user. Also subclasses `ValueError` |
+| `LumagenFirmwareImageError` | `HomeAssistantError` (`firmware_image_invalid`): the downloaded updater is unusable; device untouched |
+| `LumagenFirmwareAbortError` | `HomeAssistantError` (`firmware_aborted`): stopped before touching live firmware; nothing changed, retry |
+| `LumagenFirmwareError` (other) | `HomeAssistantError` (`firmware_failed`) with the message verbatim, plus a persistent notification; power left alone |
+| `LumagenReleaseIndexError` (`aiolumagen.firmware` only) | `UpdateFailed` in the release coordinator; offer no update, keep the last known release |
 
 No `LumagenAuthError` — Lumagen has no auth. ESPHome PSK errors arrive as `LumagenConnectionError`.
 

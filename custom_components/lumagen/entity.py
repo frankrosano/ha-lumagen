@@ -73,5 +73,9 @@ class LumagenBaseEntity(CoordinatorEntity[LumagenCoordinator]):
 
         Checks both the coordinator's own availability (transport connected)
         and the client's staleness detection (no response in stale_timeout).
+        While a firmware update runs the client is stopped, so nothing it
+        reports is live and every entity is unavailable.
         """
+        if self.coordinator.firmware_update_active:
+            return False
         return super().available and self.coordinator.client.available

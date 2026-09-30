@@ -209,3 +209,23 @@ restart_input:
       selector:
         device:
           integration: lumagen
+qualify_firmware_transfer:
+  name: Qualify firmware transfer
+  description: >
+    Admin only. Runs the full firmware-update pipeline for the newest
+    release on your channel (download, power-on if needed, transfer,
+    verify) but writes section 0 to the scratch region only and never
+    promotes it. Live firmware is untouched and the Lumagen is not powered
+    down. Run this several times before the first real install from Home
+    Assistant, to qualify the transfer path through Home Assistant's
+    ESPHome connection.
+  fields:
+    device_id:
+      name: Lumagen
+      description: >
+        Which Lumagen to qualify. Only needed if you have more than one
+        configured — leave empty to use your only Lumagen.
+      required: false
+      selector:
+        device:
+          integration: lumagen

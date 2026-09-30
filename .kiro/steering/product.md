@@ -42,6 +42,7 @@ Direct serial from the HA host also works — either a USB-B cable to the same F
 - **Primary sensors**: Current input, Input memory, Source/Output resolution, Source/Output refresh rate (Hz), Source/Content aspect, Colorspace (enum), HDR status (enum), Input status (enum), Source mode (enum: Interlaced / Progressive / No input)
 - **Buttons**: Power on/Standby, full OSD nav (Menu/Exit/OK/Menu off/Up/Down/Left/Right), direct inputs 1–8 + Previous, all aspect presets (4:3, Letterbox, 16:9, 16:9 NZ, 1.85, 2.35, 2.40), Auto aspect on/off, Memory A–D, HDR setup, Test pattern, OSD on/off, Save to NVRAM, Query status
 - **Selects**: Input (1–8), Aspect ratio (7 options), Memory (A–D)
+- **Update**: Firmware — checks lumagen.com daily and installs from HA. Channel option: Beta (default; Lumagen rarely posts Production builds) or Production. Auto power-on with a settle delay when in standby; power restored afterwards. The post-update power-off is expected. Qualify the HA transport first with the admin-only `lumagen.qualify_firmware_transfer` service (scratch-only write).
 
 ## Status
 

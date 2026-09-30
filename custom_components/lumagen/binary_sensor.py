@@ -89,9 +89,14 @@ class LumagenBinarySensor(LumagenBaseEntity, BinarySensorEntity):
 
     @property
     def available(self) -> bool:
-        """Serial-connected sensor is always available — it reports the connection state."""
+        """Serial-connected sensor is available whenever it can report the link.
+
+        The exception is a firmware update, which deliberately stops the
+        client: "disconnected" would read as a fault, so it goes unavailable
+        like every other entity instead.
+        """
         if self.entity_description.key == "serial_connected":
-            return True
+            return not self.coordinator.firmware_update_active
         return super().available
 
     @property
