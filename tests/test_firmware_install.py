@@ -52,7 +52,8 @@ PROMOTED = UpdateResult(
     powered_down=True,
     notes=("synthetic note",),
 )
-STAGED = UpdateResult(plan=UpdatePlan(), written=("section0",), promoted=False, powered_down=False)
+# The plan found nothing to write: no reboot owed, so no power-down.
+NOTHING_WRITTEN = UpdateResult(plan=UpdatePlan(), written=(), promoted=False, powered_down=False)
 
 
 @dataclass
@@ -232,7 +233,9 @@ async def test_on_success_powered_down_repowers(
     rig.session_factory.assert_called_once_with(HASS_URL, baudrate=SESSION_BAUD)
     kwargs = rig.session.run_update.await_args.kwargs
     assert kwargs["baudrate"] == 230400
-    assert kwargs["promote"] is True
+    # Library defaults: promote, and let the plan choose the sections.
+    assert "promote" not in kwargs
+    assert "only" not in kwargs
     assert rig.active_during_session == [True]
     assert rig.coordinator.firmware_update_active is False
     assert not rig.coordinator.firmware_lock.locked()
@@ -257,22 +260,19 @@ async def test_off_success_powered_down_left_off(
 async def test_off_success_not_powered_down_returns_to_standby(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, fast_timeouts: None
 ) -> None:
-    rig = await _rig(hass, aioclient_mock, power_on=False, result=STAGED)
+    rig = await _rig(hass, aioclient_mock, power_on=False, result=NOTHING_WRITTEN)
 
-    _result, power = await rig.install(promote=False, only=["section0"])
+    _result, power = await rig.install()
 
     assert power == firmware.POWER_STANDBY
     assert rig.calls == ["power_on", "stop", "session", "start", "standby"]
-    kwargs = rig.session.run_update.await_args.kwargs
-    assert kwargs["promote"] is False
-    assert kwargs["only"] == ["section0"]
 
 
 async def test_on_success_not_powered_down_leaves_power(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, fast_timeouts: None
 ) -> None:
-    rig = await _rig(hass, aioclient_mock, power_on=True, result=STAGED)
-    _result, power = await rig.install(promote=False, only=["section0"])
+    rig = await _rig(hass, aioclient_mock, power_on=True, result=NOTHING_WRITTEN)
+    _result, power = await rig.install()
     assert power == firmware.POWER_UNCHANGED
     assert rig.calls == ["stop", "session", "start"]
 
@@ -511,11 +511,11 @@ async def test_resume_failure_schedules_reload(
 async def test_pending_options_reload_runs_after_install(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, fast_timeouts: None
 ) -> None:
-    rig = await _rig(hass, aioclient_mock, power_on=True, result=STAGED)
+    rig = await _rig(hass, aioclient_mock, power_on=True, result=NOTHING_WRITTEN)
     reload = _use(patch.object(hass.config_entries, "async_schedule_reload"))
     rig.coordinator.reload_pending = True
 
-    await rig.install(promote=False, only=["section0"])
+    await rig.install()
 
     reload.assert_called_once_with(rig.coordinator.config_entry.entry_id)
     assert rig.coordinator.reload_pending is False
@@ -622,7 +622,7 @@ async def test_entry_removed_while_downloading_aborts(
 async def test_entry_removed_mid_install_leaves_client_stopped(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, fast_timeouts: None
 ) -> None:
-    rig = await _rig(hass, aioclient_mock, power_on=False, result=STAGED)
+    rig = await _rig(hass, aioclient_mock, power_on=False, result=NOTHING_WRITTEN)
     entry_id = rig.coordinator.config_entry.entry_id
 
     async def _remove() -> None:
@@ -631,7 +631,7 @@ async def test_entry_removed_mid_install_leaves_client_stopped(
     rig.during_session = _remove
     reload = _use(patch.object(hass.config_entries, "async_schedule_reload"))
 
-    _result, power = await rig.install(promote=False, only=["section0"])
+    _result, power = await rig.install()
 
     assert hass.config_entries.async_get_entry(entry_id) is None
     assert rig.calls == ["power_on", "stop", "session"]
@@ -673,12 +673,12 @@ async def test_log_result_failure_does_not_skip_cleanup(
     fast_timeouts: None,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    rig = await _rig(hass, aioclient_mock, power_on=True, result=STAGED)
+    rig = await _rig(hass, aioclient_mock, power_on=True, result=NOTHING_WRITTEN)
     _use(patch.object(firmware, "_log_result", MagicMock(side_effect=RuntimeError("log boom"))))
 
-    result, power = await rig.install(promote=False, only=["section0"])
+    result, power = await rig.install()
 
-    assert result is STAGED
+    assert result is NOTHING_WRITTEN
     assert power == firmware.POWER_UNCHANGED
     assert rig.calls == ["stop", "session", "start"]
     assert rig.coordinator.firmware_update_active is False

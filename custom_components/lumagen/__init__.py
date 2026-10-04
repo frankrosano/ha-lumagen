@@ -7,15 +7,12 @@ from typing import Any
 
 import voluptuous as vol
 from aiolumagen import INPUT_LABEL_MAX_LENGTH
-from aiolumagen.firmware import UpdateProgress
 from homeassistant.const import ATTR_AREA_ID, ATTR_DEVICE_ID, ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.service import async_register_admin_service
 
 from . import coordinator as _coordinator
-from . import firmware as _firmware
 from .const import (
     ATTR_BLOCK_CHAR,
     ATTR_CENTER,
@@ -37,14 +34,13 @@ from .const import (
     OSD_DURATION_MAX,
     OSD_DURATION_MIN,
     PLATFORMS,
-    SERVICE_QUALIFY_FIRMWARE_TRANSFER,
     SERVICE_RESTART_INPUT,
     SERVICE_SEND_OSD_MESSAGE,
     SERVICE_SEND_RAW_COMMAND,
     SERVICE_SET_INPUT_LABEL,
 )
 from .coordinator import LumagenConfigEntry, LumagenCoordinator
-from .release_coordinator import LumagenReleaseCoordinator, channel_for
+from .release_coordinator import LumagenReleaseCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -107,8 +103,6 @@ _RESTART_INPUT_SCHEMA = vol.Schema(
         **_TARGET_FIELDS,
     }
 )
-
-_QUALIFY_FIRMWARE_TRANSFER_SCHEMA = vol.Schema(_TARGET_FIELDS)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: LumagenConfigEntry) -> bool:
@@ -181,7 +175,6 @@ _DOMAIN_SERVICES = (
     SERVICE_SEND_OSD_MESSAGE,
     SERVICE_SET_INPUT_LABEL,
     SERVICE_RESTART_INPUT,
-    SERVICE_QUALIFY_FIRMWARE_TRANSFER,
 )
 
 
@@ -260,59 +253,6 @@ def _async_register_services(hass: HomeAssistant) -> None:
         SERVICE_RESTART_INPUT,
         _handle_restart_input,
         schema=_RESTART_INPUT_SCHEMA,
-    )
-    # Admin-only: it runs a real firmware session against the device.
-    async_register_admin_service(
-        hass,
-        DOMAIN,
-        SERVICE_QUALIFY_FIRMWARE_TRANSFER,
-        _async_handle_qualify_firmware_transfer,
-        schema=_QUALIFY_FIRMWARE_TRANSFER_SCHEMA,
-    )
-
-
-async def _async_handle_qualify_firmware_transfer(call: ServiceCall) -> None:
-    """Run the whole install pipeline, but write only the scratch region.
-
-    ``promote=False, only=["section0"]`` stages and verifies section 0
-    without copying it over live firmware, so the transfer path through HA's
-    ESPHome connection is exercised with nothing at stake. The unit is not
-    powered down; if it was in standby it's powered on for the run and put
-    back afterwards.
-    """
-    hass = call.hass
-    coordinator = _coordinator_for(hass, call)
-    releases = coordinator.release_coordinator
-    if releases is None:
-        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="firmware_no_release")
-    if not releases.has_data:
-        await releases.async_refresh()
-    listing = releases.latest_for(channel_for(coordinator.config_entry))
-    if listing is None:
-        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="firmware_no_release")
-
-    def _progress(progress: UpdateProgress) -> None:
-        _LOGGER.debug("Qualification %s: %s", progress.phase, progress.message)
-
-    result, _power = await _firmware.async_install_firmware(
-        hass,
-        coordinator,
-        listing,
-        progress=_progress,
-        promote=False,
-        only=["section0"],
-    )
-    await _firmware.async_notify(
-        hass,
-        coordinator,
-        "firmware_qualify_result_notification",
-        {
-            "version": listing.revision.mmddyy,
-            "written": ", ".join(result.written) or "nothing",
-            "flush_calls": result.flush_calls,
-            "flush_retries": result.flush_retries,
-            "notes": "; ".join(result.notes) or "none",
-        },
     )
 
 

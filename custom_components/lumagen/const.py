@@ -141,16 +141,18 @@ FIRMWARE_POWER_ON_TIMEOUT: Final = 60.0
 
 # Extra wait after the Lumagen reports power-on and before any firmware command.
 #
-# Derived, not measured. aiolumagen's preflight (firmware/session.py, the
-# standby gate) only checks that ZQS02 reports "on"; it does not wait for the
-# unit to finish coming up. FIRMWARE_UPDATE_PROTOCOL.md (lumagen-research) §I.2
+# Derived rather than measured, then checked on hardware. aiolumagen's
+# preflight (firmware/session.py, the standby gate) only checks that ZQS02
+# reports "on"; it does not wait for the unit to finish coming up.
+# FIRMWARE_UPDATE_PROTOCOL.md (lumagen-research) §I.2
 # and §4.1 say standby services no updater commands and that the vendor's
 # Tip0006 procedure opens with "Turn the Radiance power on", but give no
 # duration. The only documented startup timing is the ~10 s window after
 # power-on in which boot mode listens (§4.1's "…within 10 SECONDS" message;
 # lumagen-research probe_proxy.py). 15 s is that window plus 5 s of margin —
-# negligible against a 1-5 minute transfer. The install logs the observed
-# power-on time so this can be confirmed on hardware.
+# negligible against a transfer of several minutes. The install logs the
+# observed power-on time: on a Radiance Pro 4242 the unit reported power-on
+# 9.7 s after the request, and preflight passed first try after this settle.
 FIRMWARE_POWER_ON_SETTLE: Final = 15.0
 
 # Bound on the best-effort standby sent when an install is cancelled (HA
@@ -165,11 +167,6 @@ FIRMWARE_POST_UPDATE_STANDBY_TIMEOUT: Final = 180.0
 # How often to re-ask for power state while waiting on a transition. The
 # client's own poll may be minutes apart; this keeps the wait responsive.
 FIRMWARE_POWER_QUERY_INTERVAL: Final = 5.0
-
-# Admin-only service writing section 0 to the scratch region without promoting:
-# the full transfer path with live firmware untouched. It exists to qualify
-# HA's esphome-hass:// transport before the first real install.
-SERVICE_QUALIFY_FIRMWARE_TRANSFER: Final = "qualify_firmware_transfer"
 
 # How long to wait for a device-info response during config-flow validation.
 VALIDATION_TIMEOUT: Final = 5.0

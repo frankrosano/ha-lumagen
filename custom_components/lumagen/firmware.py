@@ -1,9 +1,5 @@
 """Firmware-update orchestration: download, power handling, session, restore.
 
-Shared by the update entity (a real install) and the
-``lumagen.qualify_firmware_transfer`` service (the same pipeline with
-``promote=False, only=["section0"]``, which writes the scratch region only).
-
 Every Lumagen-shaped operation — unpacking the zip, parsing the updater,
 deciding what to write, the transfer itself — is a call into
 :mod:`aiolumagen.firmware`. This module owns only the Home Assistant half:
@@ -338,8 +334,8 @@ async def _async_restore_power(
                 # It was off before we started; Z97 left it off. Done.
                 return POWER_LEFT_OFF
             if auto_powered:
-                # Nothing needed a reboot (e.g. the qualify run), but we turned
-                # the unit on, so turn it back off.
+                # Nothing needed a reboot (e.g. the plan found nothing to
+                # write), but we turned the unit on, so turn it back off.
                 await client.standby()
                 return POWER_STANDBY
             return POWER_UNCHANGED
@@ -469,8 +465,6 @@ async def async_install_firmware(
     listing: ReleaseListing,
     *,
     progress: ProgressCallback,
-    promote: bool = True,
-    only: list[str] | None = None,
 ) -> tuple[UpdateResult, str]:
     """Download ``listing`` and write it to the Lumagen.
 
@@ -535,8 +529,6 @@ async def async_install_firmware(
                 result = await session.run_update(
                     bundle,
                     baudrate=FIRMWARE_UPDATE_BAUDRATE,
-                    promote=promote,
-                    only=only,
                     progress=progress,
                 )
         except asyncio.CancelledError:

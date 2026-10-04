@@ -389,16 +389,6 @@
           "description": "Which Lumagen to send to. Only needed if you have more than one configured; leave empty to use your only Lumagen."
         }
       }
-    },
-    "qualify_firmware_transfer": {
-      "name": "Qualify firmware transfer",
-      "description": "Admin only. Runs the full firmware-update pipeline for the newest release on your channel (download, power-on if needed, transfer, verify) but writes section 0 to the scratch region only and never promotes it. Live firmware is untouched and the Lumagen is not powered down. Run this several times before the first real install from Home Assistant, to qualify the transfer path through Home Assistant's ESPHome connection.",
-      "fields": {
-        "device_id": {
-          "name": "Lumagen",
-          "description": "Which Lumagen to qualify. Only needed if you have more than one configured; leave empty to use your only Lumagen."
-        }
-      }
     }
   },
   "exceptions": {
@@ -458,9 +448,6 @@
     },
     "firmware_power_restore_failed": {
       "message": "Its previous power state could not be restored."
-    },
-    "firmware_qualify_result_notification": {
-      "message": "Transfer qualification with firmware {version} finished. Written to scratch: {written}. Flush calls: {flush_calls}, retries: {flush_retries}. Notes: {notes}. Live firmware was not touched."
     },
     "firmware_notification_title": {
       "message": "Lumagen firmware update"

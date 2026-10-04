@@ -23,7 +23,7 @@ ha-lumagen/
 │       ├── update.py                    # Firmware update entity (version compare, install, progress)
 │       ├── firmware.py                  # Install orchestration: download, power-on/settle, client pause, restore
 │       ├── release_coordinator.py       # Daily lumagen.com release-index check (HTTP here, parsing in aiolumagen)
-│       ├── services.yaml                # service schemas (incl. qualify_firmware_transfer)
+│       ├── services.yaml                # service schemas
 │       ├── strings.json                 # English UI strings (source of truth for translations)
 │       └── translations/                # generated/translated locale JSON
 └── tests/
@@ -36,7 +36,7 @@ ha-lumagen/
     ├── test_release_coordinator.py      # release-index fetch, fail-closed, channel selection
     ├── test_update.py                   # update entity: versions, channels, gating, progress
     ├── test_firmware_install.py         # install orchestration, power-restore branches, error mapping
-    └── test_firmware_gating.py          # services refused mid-update, deferred reload, qualify service
+    └── test_firmware_gating.py          # services refused mid-update, deferred reload
 ```
 
 ## Conventions
