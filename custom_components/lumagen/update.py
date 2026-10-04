@@ -38,9 +38,11 @@ from .release_coordinator import LumagenReleaseCoordinator, channel_for
 
 _LOGGER = logging.getLogger(__name__)
 
-# Phases whose byte counts are meaningful as a percentage. The fraction covers
-# one phase of one section, so the bar restarts per section — the library has
-# no overall total, and inferring one would duplicate its flash map here.
+# The bar is driven by `UpdateProgress.overall`: one 0-100 run across every
+# section and phase, monotonic, computed by the library from its own flash map.
+# These are the fallback for an event without it (anything outside run_update):
+# phases whose per-phase byte fraction is meaningful as a percentage. That
+# fraction restarts per section and phase, which is why it isn't the default.
 _PERCENT_PHASES = frozenset({UpdatePhase.ERASING, UpdatePhase.WRITING})
 
 
@@ -204,12 +206,15 @@ class LumagenFirmwareUpdateEntity(LumagenBaseEntity, UpdateEntity):
     @callback
     def _on_progress(self, progress: UpdateProgress) -> None:
         """Library progress callback; runs on the event loop inside the session."""
+        overall = progress.overall
         fraction = progress.fraction
-        pct = (
-            round(fraction * 100)
-            if progress.phase in _PERCENT_PHASES and fraction is not None
-            else None
-        )
+        pct: int | None
+        if overall is not None:
+            pct = round(min(1.0, max(0.0, overall)) * 100)
+        elif progress.phase in _PERCENT_PHASES and fraction is not None:
+            pct = round(fraction * 100)
+        else:
+            pct = None
         _LOGGER.debug("Firmware %s: %s", progress.phase, progress.message)
         key = (progress.phase, pct)
         if key == self._progress_key:

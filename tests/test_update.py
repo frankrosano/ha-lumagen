@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import itertools
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -276,3 +277,99 @@ async def test_progress_callback_writes_only_on_change(hass: HomeAssistant) -> N
         _push(UpdatePhase.VERIFYING, 10, 100)
         assert entity.update_percentage is None
     assert write.call_count == 5
+
+
+def _two_section_run() -> list[UpdateProgress]:
+    """A run_update-shaped event stream writing section 1 then section 0.
+
+    Each erase and write carries its own per-phase byte fraction (restarting at
+    zero) alongside a whole-run ``overall``, the way the library reports them.
+    """
+    events = [
+        UpdateProgress(phase=UpdatePhase.PREFLIGHT, message="m", overall=0.0),
+        UpdateProgress(phase=UpdatePhase.PLANNING, message="m", overall=0.0),
+        UpdateProgress(phase=UpdatePhase.RATE_CHANGE, message="m", overall=0.01),
+    ]
+    # (section, phase, units, overall at start, overall at end)
+    spans = [
+        ("section1", UpdatePhase.ERASING, 50, 0.01, 0.10),
+        ("section1", UpdatePhase.WRITING, 772, 0.10, 0.60),
+        ("section0", UpdatePhase.ERASING, 10, 0.62, 0.66),
+        ("section0", UpdatePhase.WRITING, 112, 0.66, 0.95),
+    ]
+    for section, phase, units, start, end in spans:
+        for done in range(units + 1):
+            events.append(
+                UpdateProgress(
+                    phase=phase,
+                    message="m",
+                    section=section,
+                    bytes_done=done * 4096,
+                    bytes_total=units * 4096,
+                    overall=start + (end - start) * done / units,
+                )
+            )
+        if section == "section1" and phase is UpdatePhase.WRITING:
+            events.append(
+                UpdateProgress(
+                    phase=UpdatePhase.VERIFYING, message="m", section=section, overall=0.61
+                )
+            )
+            events.append(
+                UpdateProgress(
+                    phase=UpdatePhase.COMMITTING, message="m", section=section, overall=0.62
+                )
+            )
+    events += [
+        UpdateProgress(phase=UpdatePhase.VERIFYING, message="m", section="section0", overall=0.96),
+        UpdateProgress(phase=UpdatePhase.PROMOTING, message="m", section="section0", overall=0.98),
+        UpdateProgress(phase=UpdatePhase.DONE, message="update complete", overall=1.0),
+    ]
+    return events
+
+
+def _times_reaching_100(series: list[int | None]) -> int:
+    """How many separate times the bar arrives at 100%."""
+    return sum(1 for a, b in itertools.pairwise([None, *series]) if b == 100 and a != 100)
+
+
+async def test_progress_uses_overall_for_one_bar(hass: HomeAssistant) -> None:
+    """Two sections' erase and write make one rising bar, not four 0-100 runs."""
+    await setup_entry(hass, make_client())
+    entity = _entity(hass)
+    events = _two_section_run()
+    series: list[int | None] = []
+    with patch.object(entity, "async_write_ha_state") as write:
+        for progress in events:
+            entity._on_progress(progress)
+            series.append(entity.update_percentage)
+
+    assert None not in series
+    assert all(b >= a for a, b in itertools.pairwise(series)), "bar went backwards"
+    assert series[0] == 0
+    assert series[-1] == 100
+    # The per-phase fraction hit 100% four times; the bar only reaches it once,
+    # and only on DONE.
+    assert _times_reaching_100(series) == 1
+    assert series.index(100) == len(series) - 1
+    # Writes stay bounded by distinct percentages plus phase changes, well
+    # under one per block (~950 events here).
+    assert write.call_count <= 101 + 12
+    assert write.call_count < len(events) / 5
+
+
+async def test_progress_without_overall_falls_back_per_phase(hass: HomeAssistant) -> None:
+    """With no ``overall`` the bar follows each erase/write phase, as before."""
+    await setup_entry(hass, make_client())
+    entity = _entity(hass)
+    series: list[int | None] = []
+    with patch.object(entity, "async_write_ha_state"):
+        for progress in _two_section_run():
+            entity._on_progress(dataclasses.replace(progress, overall=None))
+            series.append(entity.update_percentage)
+
+    # Only erase/write report a percentage, and it restarts per phase.
+    assert series[:3] == [None, None, None]
+    assert series[-1] is None
+    assert _times_reaching_100(series) == 4
+    assert any(b is not None and a is not None and b < a for a, b in itertools.pairwise(series))
